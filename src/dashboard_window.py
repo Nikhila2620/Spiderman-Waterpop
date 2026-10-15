@@ -293,8 +293,7 @@ class DashboardWindow(QWidget):
         layout.setSpacing(14)
 
         # Identity
-        id_card = self._create_card("Personalization")
-        id_vbox = QVBoxLayout(id_card)
+        id_card, id_vbox = self._create_card("Personalization")
         id_vbox.addWidget(QLabel("Companion Name:"))
         self.edit_comp_name = QLineEdit()
         id_vbox.addWidget(self.edit_comp_name)
@@ -305,8 +304,7 @@ class DashboardWindow(QWidget):
         layout.addWidget(id_card)
 
         # Windows Integration
-        win_card = self._create_card("Windows Integration & Behavior")
-        win_vbox = QVBoxLayout(win_card)
+        win_card, win_vbox = self._create_card("Windows Integration & Behavior")
 
         self.chk_startup = QCheckBox("Launch automatically when Windows starts")
         win_vbox.addWidget(self.chk_startup)
@@ -319,8 +317,8 @@ class DashboardWindow(QWidget):
         layout.addWidget(win_card)
 
         # Backup & Recovery
-        bak_card = self._create_card("Configuration Backup & Reset")
-        bak_layout = QHBoxLayout(bak_card)
+        bak_card, bak_vbox = self._create_card("Configuration Backup & Reset")
+        bak_layout = QHBoxLayout()
 
         btn_restore_bak = QPushButton("Restore Backup Settings")
         btn_restore_bak.setStyleSheet("background-color: #241c38; color: #38bdf8; border: 1px solid #3c2f5a;")
@@ -331,6 +329,7 @@ class DashboardWindow(QWidget):
         btn_reset_defaults.setStyleSheet("background-color: #241c38; color: #f87171; border: 1px solid #5a2f3a;")
         btn_reset_defaults.clicked.connect(self._reset_defaults)
         bak_layout.addWidget(btn_reset_defaults)
+        bak_vbox.addLayout(bak_layout)
         layout.addWidget(bak_card)
 
         layout.addStretch()
@@ -349,8 +348,7 @@ class DashboardWindow(QWidget):
         layout.setSpacing(14)
 
         # Intervals
-        sched_card = self._create_card("Reminder Intervals")
-        s_layout = QVBoxLayout(sched_card)
+        sched_card, s_layout = self._create_card("Reminder Intervals")
         s_layout.setSpacing(10)
 
         self.chk_reminders_enabled = QCheckBox("Enable Water Reminders")
@@ -385,8 +383,7 @@ class DashboardWindow(QWidget):
         layout.addWidget(sched_card)
 
         # Quiet Hours
-        quiet_card = self._create_card("Quiet Hours (Do Not Disturb)")
-        q_layout = QVBoxLayout(quiet_card)
+        quiet_card, q_layout = self._create_card("Quiet Hours (Do Not Disturb)")
 
         self.chk_quiet = QCheckBox("Enable Quiet Hours")
         q_layout.addWidget(self.chk_quiet)
@@ -406,8 +403,7 @@ class DashboardWindow(QWidget):
         layout.addWidget(quiet_card)
 
         # Personalized Messages
-        msg_card = self._create_card("Custom Messages (Use '[Name]' for your name)")
-        m_layout = QVBoxLayout(msg_card)
+        msg_card, m_layout = self._create_card("Custom Messages (Use '[Name]' for your name)")
 
         m_layout.addWidget(QLabel("Reminder Prompt Message:"))
         self.edit_msg_prompt = QLineEdit()
@@ -443,18 +439,18 @@ class DashboardWindow(QWidget):
         layout.setSpacing(14)
 
         # Desktop Placement
-        pos_card = self._create_card("Desktop Screen Placement")
-        p_layout = QHBoxLayout(pos_card)
+        pos_card, pos_vbox = self._create_card("Desktop Screen Placement")
+        p_layout = QHBoxLayout()
         p_layout.addWidget(QLabel("Anchor Corner:"))
         self.combo_corner = QComboBox()
         self.combo_corner.addItems(["top-right", "top-left", "bottom-right", "bottom-left"])
         p_layout.addWidget(self.combo_corner)
         p_layout.addStretch()
+        pos_vbox.addLayout(p_layout)
         layout.addWidget(pos_card)
 
         # Interaction & Mouse Follow
-        act_card = self._create_card("Interaction & Click-Through")
-        a_layout = QVBoxLayout(act_card)
+        act_card, a_layout = self._create_card("Interaction & Click-Through")
 
         self.chk_click_through = QCheckBox("Enable Click-Through (Clicks pass through companion to background apps)")
         a_layout.addWidget(self.chk_click_through)
@@ -477,8 +473,8 @@ class DashboardWindow(QWidget):
         layout.addWidget(act_card)
 
         # Animation Preview
-        anim_card = self._create_card("Animation Previews")
-        an_layout = QHBoxLayout(anim_card)
+        anim_card, anim_vbox = self._create_card("Animation Previews")
+        an_layout = QHBoxLayout()
 
         btn_test_happy = QPushButton("🎉 Test Happy Celebration")
         btn_test_happy.setStyleSheet("background-color: #241c38; color: #34d399; border: 1px solid #3c2f5a;")
@@ -489,21 +485,23 @@ class DashboardWindow(QWidget):
         btn_test_sad.setStyleSheet("background-color: #241c38; color: #f87171; border: 1px solid #3c2f5a;")
         btn_test_sad.clicked.connect(lambda: self.testAnimationRequested.emit("disappointed"))
         an_layout.addWidget(btn_test_sad)
+        anim_vbox.addLayout(an_layout)
         layout.addWidget(anim_card)
 
         layout.addStretch()
         scroll.setWidget(widget)
         return scroll
 
-    def _create_card(self, title: str) -> QFrame:
+    def _create_card(self, title: str):
         card = QFrame()
         card.setStyleSheet("background-color: #1a152b; border: 1px solid #31284a; border-radius: 12px; padding: 12px;")
         lbl = QLabel(title)
         lbl.setStyleSheet("font-size: 13.5px; font-weight: 800; color: #38bdf8; margin-bottom: 4px;")
-        # Prepend label
         layout = QVBoxLayout(card)
+        layout.setContentsMargins(14, 12, 14, 14)
+        layout.setSpacing(10)
         layout.addWidget(lbl)
-        return card
+        return card, layout
 
     def _connect_engine_signals(self):
         self.engine.timerTick.connect(self._on_timer_tick)

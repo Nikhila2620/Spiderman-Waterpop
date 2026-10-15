@@ -10,7 +10,7 @@ from PySide6.QtCore import (
     Signal,
 )
 from PySide6.QtWidgets import QWidget
-from PySide6.QtGui import QPainter, QColor, QFont, QPen, QPixmap
+from PySide6.QtGui import QPainter, QColor, QFont, QPen, QPixmap, QCursor
 from PySide6.QtSvg import QSvgRenderer
 
 
@@ -40,10 +40,11 @@ class SpideyWidget(QWidget):
     hoverEntered = Signal()
     hoverLeft = Signal()
 
-    def __init__(self, parent=None, width=190, height=270):
+    def __init__(self, parent=None, width=230, height=320):
         super().__init__(parent)
         self.setFixedSize(width, height)
         self.setMouseTracking(True)
+        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         self._state = self.STATE_IDLE
         self._base_state = self.STATE_IDLE
@@ -162,8 +163,9 @@ class SpideyWidget(QWidget):
     def mouseMoveEvent(self, event):
         if self._is_pulling and self._drag_start is not None:
             delta = event.position() - self._drag_start
-            clamped_x = max(-50.0, min(50.0, delta.x() * 0.6))
-            clamped_y = max(-10.0, min(65.0, delta.y() * 0.6))
+            # Clamped so character stays safely inside buffered canvas bounds without trimming
+            clamped_x = max(-25.0, min(25.0, delta.x() * 0.5))
+            clamped_y = max(-5.0, min(55.0, delta.y() * 0.5))
             self.set_pull_offset(QPointF(clamped_x, clamped_y))
             event.accept()
 
@@ -179,6 +181,14 @@ class SpideyWidget(QWidget):
             self.clicked.emit()
             event.accept()
 
+    def _get_char_rect(self) -> QRectF:
+        """Returns the base bounding rect of Spider-Man with buffer margins to prevent clipping."""
+        char_w = 175.0
+        char_h = 245.0
+        char_x = (self.width() - char_w) / 2.0
+        char_y = 0.0
+        return QRectF(char_x, char_y, char_w, char_h)
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -186,6 +196,8 @@ class SpideyWidget(QWidget):
 
         anchor_x = self.width() / 2.0
         anchor_y = 0.0
+
+        char_rect = self._get_char_rect()
 
         # Draw stretched dynamic web strand if pulled
         if not self._pull_offset.isNull():
@@ -204,53 +216,55 @@ class SpideyWidget(QWidget):
 
         # 1. Render Photorealistic AAA 3D Character
         if self._pixmap_3d and not self._pixmap_3d.isNull():
-            target_rect = QRectF(0, 0, self.width(), self.height())
-            painter.drawPixmap(target_rect.toRect(), self._pixmap_3d)
+            painter.drawPixmap(char_rect.toRect(), self._pixmap_3d)
         else:
             # Fallback to vector asset
             renderer = self._renderers.get(self._state) or self._renderers.get(self.STATE_IDLE)
             if renderer and renderer.isValid():
-                target_rect = QRectF(0, 0, self.width(), self.height())
-                renderer.render(painter, target_rect)
+                renderer.render(painter, char_rect)
 
         # 2. Render dynamic interactive state overlays
         if self._state == self.STATE_HOVER:
-            self._paint_hover_overlay(painter)
+            self._paint_hover_overlay(painter, char_rect)
         elif self._state == self.STATE_HAPPY:
-            self._paint_happy_overlay(painter)
+            self._paint_happy_overlay(painter, char_rect)
         elif self._state == self.STATE_DISAPPOINTED:
-            self._paint_disappointed_overlay(painter)
+            self._paint_disappointed_overlay(painter, char_rect)
 
-    def _paint_hover_overlay(self, painter: QPainter):
+    def _paint_hover_overlay(self, painter: QPainter, char_rect: QRectF):
         """Cyan spider-sense tingling aura around mask."""
         pen = QPen(QColor("#38bdf8"), 2.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        # Tingling sense arcs around head (head is near bottom center, around x:95, y:230)
-        head_cx = self.width() * 0.5
-        head_cy = self.height() * 0.82
+        head_cx = char_rect.center().x()
+        head_cy = char_rect.top() + char_rect.height() * 0.85
         painter.drawArc(int(head_cx - 40), int(head_cy - 30), 80, 60, 30 * 16, 120 * 16)
         painter.drawArc(int(head_cx - 48), int(head_cy - 36), 96, 72, 40 * 16, 100 * 16)
 
-    def _paint_happy_overlay(self, painter: QPainter):
+    def _paint_happy_overlay(self, painter: QPainter, char_rect: QRectF):
         """Golden celebration sparkles & web burst."""
-        # Golden stars
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor("#fbbf24"))
-        w, h = self.width(), self.height()
+        cx = char_rect.left()
+        cy = char_rect.top()
+        cw = char_rect.width()
+        ch = char_rect.height()
         # Star 1 (Right)
-        self._draw_star(painter, w * 0.82, h * 0.65, 8)
+        self._draw_star(painter, cx + cw * 0.85, cy + ch * 0.65, 8)
         # Star 2 (Left)
         painter.setBrush(QColor("#38bdf8"))
-        self._draw_star(painter, w * 0.18, h * 0.45, 6)
+        self._draw_star(painter, cx + cw * 0.15, cy + ch * 0.45, 6)
 
-    def _paint_disappointed_overlay(self, painter: QPainter):
+    def _paint_disappointed_overlay(self, painter: QPainter, char_rect: QRectF):
         """Comedic blue sweat drop."""
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor("#38bdf8"))
-        # Sweat drop near temple (head is around width*0.5, height*0.82)
-        sx = self.width() * 0.62
-        sy = self.height() * 0.76
+        cx = char_rect.left()
+        cy = char_rect.top()
+        cw = char_rect.width()
+        ch = char_rect.height()
+        sx = cx + cw * 0.62
+        sy = cy + ch * 0.78
         painter.drawEllipse(int(sx), int(sy), 8, 12)
 
     def _draw_star(self, painter: QPainter, cx: float, cy: float, r: float):

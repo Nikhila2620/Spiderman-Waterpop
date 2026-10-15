@@ -72,7 +72,7 @@ class CompanionWindow(QWidget):
         # 1. Spider-Man Hanging Character Widget
         spidey_box = QHBoxLayout()
         spidey_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.spidey = SpideyWidget(width=190, height=270)
+        self.spidey = SpideyWidget(parent=self, width=230, height=320)
         self.spidey.hoverEntered.connect(self._on_spidey_hover_enter)
         self.spidey.hoverLeft.connect(self._on_spidey_hover_leave)
         self.spidey.clicked.connect(self._on_spidey_clicked)
@@ -435,8 +435,8 @@ class CompanionWindow(QWidget):
     def _on_auto_close(self):
         self._in_reminder_mode = False
         self.apply_click_through(self.settings.click_through_enabled)
-        # In companion mode, we can keep Spidey visible or reset UI
         self.reset_card_ui()
+        self.hide()
 
     def _on_dismiss_clicked(self):
         self._in_reminder_mode = False

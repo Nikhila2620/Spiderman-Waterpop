@@ -70,19 +70,24 @@ class InstallWorker(QThread):
                 # When bundled as onefile installer, extraction payload is in sys._MEIPASS
                 meipass = getattr(sys, "_MEIPASS", None)
                 if meipass:
-                    embed_zip = Path(meipass) / "payload.zip"
-                    if embed_zip.exists():
-                        payload_zip = embed_zip
-                    else:
-                        for p in Path(meipass).glob("*.zip"):
-                            payload_zip = p
+                    meipass_path = Path(meipass)
+                    candidates = [
+                        meipass_path / "SpiderManWaterBuddy-v1.0.0-Portable.zip",
+                        meipass_path / "payload.zip",
+                    ] + [p for p in meipass_path.glob("*.zip") if "base_library" not in p.name.lower()]
+                    for c in candidates:
+                        if c.exists():
+                            payload_zip = c
                             break
 
             if payload_zip.exists():
                 self.progressUpdated.emit(25, "Extracting application package...")
                 with zipfile.ZipFile(payload_zip, "r") as zf:
-                    total_files = len(zf.namelist())
-                    for idx, name in enumerate(zf.namelist()):
+                    names = zf.namelist()
+                    if "SpiderManWaterBuddy.exe" not in names:
+                        raise RuntimeError(f"Package {payload_zip.name} does not contain SpiderManWaterBuddy.exe")
+                    total_files = len(names)
+                    for idx, name in enumerate(names):
                         zf.extract(name, self.target_dir)
                         pct = 25 + int((idx / total_files) * 50)
                         self.progressUpdated.emit(pct, f"Installing {Path(name).name}...")
@@ -93,6 +98,8 @@ class InstallWorker(QThread):
                 raise FileNotFoundError("Could not find installation payload.")
 
             target_exe = self.target_dir / "SpiderManWaterBuddy.exe"
+            if not target_exe.exists():
+                raise FileNotFoundError(f"Installation failed: {target_exe} was not found after extraction.")
             icon_path = self.target_dir / "assets" / "images" / "app_icon.ico"
             if not icon_path.exists():
                 icon_path = self.target_dir / "_internal" / "assets" / "images" / "app_icon.ico"
@@ -261,7 +268,12 @@ class InstallerWindow(QDialog):
             self.edit_path.setText(str(Path(chosen) / "SpiderManWaterBuddy"))
 
     def _start_install(self):
-        target = Path(self.edit_path.text().strip())
+        target_str = self.edit_path.text().strip()
+        if not target_str or len(target_str) < 3 or not Path(target_str).is_absolute():
+            target = self.default_install_dir
+            self.edit_path.setText(str(target))
+        else:
+            target = Path(target_str)
         self.btn_install.setEnabled(False)
         self.btn_cancel.setEnabled(False)
         self.progress.setVisible(True)

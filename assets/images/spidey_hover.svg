@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 270" width="200" height="270">
+  <defs>
+    <filter id="webGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#38bdf8" flood-opacity="0.9"/>
+    </filter>
+    <filter id="spideyShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#050515" flood-opacity="0.45"/>
+    </filter>
+    <linearGradient id="suitRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f43f5e"/>
+      <stop offset="50%" stop-color="#e11d48"/>
+      <stop offset="100%" stop-color="#be123c"/>
+    </linearGradient>
+    <linearGradient id="suitBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="60%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <radialGradient id="hoverAura" cx="50%" cy="60%" r="65%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#f43f5e" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Cozy Interactive Aura Glow -->
+  <circle cx="100" cy="160" r="90" fill="url(#hoverAura)"/>
+
+  <!-- Web Anchor Thread from Top Screen Ceiling -->
+  <g filter="url(#webGlow)">
+    <line x1="100" y1="0" x2="100" y2="70" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="100" cy="18" r="2.5" fill="#38bdf8"/>
+    <circle cx="100" cy="38" r="2.5" fill="#38bdf8"/>
+    <circle cx="100" cy="58" r="2.5" fill="#38bdf8"/>
+  </g>
+
+  <!-- Spider-Sense Tingling Lines around Head -->
+  <g stroke="#38bdf8" stroke-width="2" stroke-linecap="round" fill="none">
+    <!-- Left Sense Lines -->
+    <path d="M 52 170 C 44 180, 42 195, 48 210"/>
+    <path d="M 40 182 C 32 192, 34 200, 36 208"/>
+    <!-- Right Sense Lines -->
+    <path d="M 148 170 C 156 180, 158 195, 152 210"/>
+    <path d="M 160 182 C 168 192, 166 200, 164 208"/>
+  </g>
+
+  <!-- Upside Down Spider-Man Character (Waving & Wide-Eyed) -->
+  <g filter="url(#spideyShadow)">
+
+    <!-- Inverted Legs Holding Web -->
+    <path d="M 100 68 C 90 62, 75 58, 68 70 C 62 82, 72 100, 84 112" fill="none" stroke="url(#suitBlue)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 100 68 C 92 63, 80 60, 72 70" fill="none" stroke="url(#suitRed)" stroke-width="12" stroke-linecap="round"/>
+    <ellipse cx="98" cy="66" rx="6" ry="8" fill="url(#suitRed)" transform="rotate(-15 98 66)"/>
+
+    <path d="M 100 68 C 112 60, 128 62, 134 76 C 140 90, 128 106, 116 114" fill="none" stroke="url(#suitBlue)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 100 68 C 110 61, 122 64, 128 74" fill="none" stroke="url(#suitRed)" stroke-width="12" stroke-linecap="round"/>
+    <ellipse cx="102" cy="66" rx="6" ry="8" fill="url(#suitRed)" transform="rotate(15 102 66)"/>
+
+    <!-- Inverted Torso / Hips -->
+    <path d="M 82 110 Q 100 102 118 110 L 114 148 Q 100 152 86 148 Z" fill="url(#suitBlue)"/>
+    <path d="M 88 112 Q 100 106 112 112 L 110 148 Q 100 151 90 148 Z" fill="url(#suitRed)"/>
+
+    <!-- Web Lines -->
+    <path d="M 90 120 Q 100 124 110 120" stroke="#881337" stroke-width="1.2" fill="none"/>
+    <path d="M 90 132 Q 100 136 110 132" stroke="#881337" stroke-width="1.2" fill="none"/>
+    <line x1="100" y1="110" x2="100" y2="148" stroke="#881337" stroke-width="1.2"/>
+
+    <!-- Emblem -->
+    <ellipse cx="100" cy="130" rx="3" ry="4.5" fill="#09090b"/>
+
+    <!-- Left Arm holding the Web Line -->
+    <path d="M 84 116 C 68 126, 62 100, 72 82 C 78 72, 92 70, 98 70" fill="none" stroke="url(#suitRed)" stroke-width="9" stroke-linecap="round"/>
+
+    <!-- Right Arm: Waving Friendly Hand at User! -->
+    <path d="M 116 116 C 136 122, 152 136, 150 156" fill="none" stroke="url(#suitRed)" stroke-width="9" stroke-linecap="round"/>
+    <!-- Open Waving Hand -->
+    <g transform="translate(150, 156)">
+      <circle cx="2" cy="2" r="7" fill="#e11d48"/>
+      <!-- Fingers spread in friendly wave -->
+      <line x1="2" y1="-2" x2="8" y2="-8" stroke="#e11d48" stroke-width="3" stroke-linecap="round"/>
+      <line x1="5" y1="0" x2="12" y2="-3" stroke="#e11d48" stroke-width="3" stroke-linecap="round"/>
+      <line x1="5" y1="4" x2="11" y2="4" stroke="#e11d48" stroke-width="3" stroke-linecap="round"/>
+      <line x1="4" y1="7" x2="9" y2="9" stroke="#e11d48" stroke-width="3" stroke-linecap="round"/>
+      <!-- Motion wave arcs -->
+      <path d="M 14 -10 C 18 -6, 18 10, 14 14" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    </g>
+
+    <!-- Head (Curious Wide Lenses with blue shimmer) -->
+    <g transform="translate(100, 195)">
+      <ellipse cx="0" cy="0" rx="28" ry="32" fill="url(#suitRed)"/>
+
+      <!-- Mask Web Lines -->
+      <path d="M 0 -32 L 0 32" stroke="#881337" stroke-width="1.2"/>
+      <path d="M -28 0 L 28 0" stroke="#881337" stroke-width="1.2"/>
+      <ellipse cx="0" cy="0" rx="10" ry="12" fill="none" stroke="#881337" stroke-width="1.2"/>
+      <ellipse cx="0" cy="0" rx="20" ry="24" fill="none" stroke="#881337" stroke-width="1.2"/>
+
+      <!-- Wide Alert Curious Eyes -->
+      <!-- Left Eye -->
+      <path d="M -5 -8 Q -20 -12 -25 6 Q -15 20 -4 10 Z" fill="#ffffff" stroke="#09090b" stroke-width="3.8" stroke-linejoin="round"/>
+      <!-- Right Eye -->
+      <path d="M 5 -8 Q 20 -12 25 6 Q 15 20 4 10 Z" fill="#ffffff" stroke="#09090b" stroke-width="3.8" stroke-linejoin="round"/>
+
+      <!-- Glowing Blue Highlights -->
+      <ellipse cx="-13" cy="1" rx="4" ry="6" fill="#38bdf8" opacity="0.45"/>
+      <ellipse cx="13" cy="1" rx="4" ry="6" fill="#38bdf8" opacity="0.45"/>
+      <circle cx="-14" cy="-2" r="2" fill="#ffffff"/>
+      <circle cx="14" cy="-2" r="2" fill="#ffffff"/>
+    </g>
+  </g>
+</svg>

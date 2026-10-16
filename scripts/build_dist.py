@@ -29,6 +29,12 @@ def build_all():
     print(" Spider-Man Water Buddy — Production Build Suite")
     print("==================================================")
 
+    # 0. Gracefully terminate any running instances
+    try:
+        subprocess.run(["taskkill", "/F", "/IM", "SpiderManWaterBuddy.exe"], capture_output=True)
+    except Exception:
+        pass
+
     # 1. Build main application onedir package
     spec_main = PACKAGING_DIR / "SpiderManWaterBuddy.spec"
     run_cmd([sys.executable, "-m", "PyInstaller", "--noconfirm", str(spec_main)], "Compiling SpiderManWaterBuddy (onedir)")

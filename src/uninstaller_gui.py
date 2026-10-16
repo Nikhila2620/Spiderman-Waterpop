@@ -123,13 +123,14 @@ class UninstallerDialog(QDialog):
                 "Spider-Man Water Buddy has been successfully removed from your computer.",
             )
 
-            # 6. Schedule self-deletion of installation directory
+            # 6. Schedule self-deletion of installation directory with retries
             install_path = str(self.install_dir)
-            cmd = f'cmd /c ping 127.0.0.1 -n 2 > nul & rmdir /s /q "{install_path}"'
+            cmd = f'cmd /c "for /l %i in (1,1,5) do ( ping 127.0.0.1 -n 2 > nul & rmdir /s /q \"{install_path}\" & if not exist \"{install_path}\" exit )"'
             import subprocess
             subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
 
             self.accept()
+            QApplication.quit()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Uninstall encountered an issue: {e}")
             self.reject()

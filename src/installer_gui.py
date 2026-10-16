@@ -63,16 +63,43 @@ class InstallWorker(QThread):
     def run(self):
         try:
             self.progressUpdated.emit(5, "Closing running instances of Spider-Man Water Buddy...")
-            # Terminate running instance so executable can be cleanly overwritten
+            # Terminate running instances so executables can be cleanly overwritten
             if sys.platform == "win32":
-                subprocess.run(
-                    ["taskkill", "/f", "/im", "SpiderManWaterBuddy.exe"],
-                    capture_output=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                )
+                for proc_name in ["SpiderManWaterBuddy.exe", "uninstall.exe"]:
+                    subprocess.run(
+                        ["taskkill", "/f", "/im", proc_name],
+                        capture_output=True,
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                    )
                 time.sleep(0.5)
 
             self.progressUpdated.emit(10, "Preparing installation directory...")
+            
+            # If target directory already exists, ensure clean slate or rotate away if files are locked
+            if self.target_dir.exists():
+                has_locked_files = False
+                for item in list(self.target_dir.iterdir()):
+                    if item.is_dir():
+                        shutil.rmtree(item, ignore_errors=True)
+                    else:
+                        try:
+                            try:
+                                os.chmod(item, 0o777)
+                            except Exception:
+                                pass
+                            item.unlink()
+                        except Exception:
+                            has_locked_files = True
+
+                # If any locked file remains in target_dir, rename the directory out of the way
+                if has_locked_files or any(self.target_dir.iterdir()):
+                    try:
+                        backup_dir = self.target_dir.parent / f"{self.target_dir.name}_old_{int(time.time())}"
+                        self.target_dir.rename(backup_dir)
+                        shutil.rmtree(backup_dir, ignore_errors=True)
+                    except Exception as ex:
+                        print(f"[WARN] Target directory rotation warning: {ex}")
+
             self.target_dir.mkdir(parents=True, exist_ok=True)
 
             # Locate payload zip or compiled source files
@@ -109,9 +136,15 @@ class InstallWorker(QThread):
 
                     total_files = len(names)
                     for idx, name in enumerate(names):
+                        dest_file = self.target_dir / name
                         extracted = False
-                        for attempt in range(3):
+                        for attempt in range(4):
                             try:
+                                if dest_file.exists():
+                                    try:
+                                        os.chmod(dest_file, 0o777)
+                                    except Exception:
+                                        pass
                                 zf.extract(name, self.target_dir)
                                 extracted = True
                                 break
@@ -122,10 +155,31 @@ class InstallWorker(QThread):
                                         capture_output=True,
                                         creationflags=subprocess.CREATE_NO_WINDOW,
                                     )
-                                time.sleep(0.6)
+                                    subprocess.run(
+                                        ["taskkill", "/f", "/im", "uninstall.exe"],
+                                        capture_output=True,
+                                        creationflags=subprocess.CREATE_NO_WINDOW,
+                                    )
+                                time.sleep(0.5)
+
+                                # Try renaming locked file away
+                                if dest_file.exists():
+                                    try:
+                                        renamed_old = dest_file.parent / f"{dest_file.name}.old.{int(time.time())}"
+                                        dest_file.rename(renamed_old)
+                                        try:
+                                            renamed_old.unlink()
+                                        except Exception:
+                                            pass
+                                    except Exception:
+                                        pass
 
                         if not extracted:
-                            zf.extract(name, self.target_dir)
+                            # If it is uninstall.exe and existing binary is present, keep existing rather than aborting
+                            if name == "uninstall.exe" and dest_file.exists():
+                                print("[INFO] Kept existing uninstaller.")
+                            else:
+                                zf.extract(name, self.target_dir)
 
                         pct = 25 + int((idx / total_files) * 50)
                         self.progressUpdated.emit(pct, f"Installing {Path(name).name}...")

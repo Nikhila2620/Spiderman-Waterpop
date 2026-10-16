@@ -31,7 +31,8 @@ def build_all():
 
     # 0. Gracefully terminate any running instances
     try:
-        subprocess.run(["taskkill", "/F", "/IM", "SpiderManWaterBuddy.exe"], capture_output=True)
+        for proc in ["SpiderManWaterBuddy.exe", "uninstall.exe", "SpiderManWaterBuddy-v1.0.0-Setup.exe"]:
+            subprocess.run(["taskkill", "/F", "/IM", proc], capture_output=True)
     except Exception:
         pass
 

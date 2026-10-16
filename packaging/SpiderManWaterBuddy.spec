@@ -1,11 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
 
+ROOT_DIR = Path(SPECPATH).parent
 
 a = Analysis(
-    ['run.py'],
-    pathex=[],
+    [str(ROOT_DIR / 'run.py')],
+    pathex=[str(ROOT_DIR)],
     binaries=[],
-    datas=[('assets', 'assets')],
+    datas=[(str(ROOT_DIR / 'assets'), 'assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -32,7 +34,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets/images/app_icon.ico'],
+    icon=[str(ROOT_DIR / 'assets' / 'images' / 'app_icon.ico')],
 )
 coll = COLLECT(
     exe,

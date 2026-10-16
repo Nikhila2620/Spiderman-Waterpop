@@ -1,9 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
 
+ROOT_DIR = Path(SPECPATH).parent
 
 a = Analysis(
-    ['src/uninstaller_gui.py'],
-    pathex=[],
+    [str(ROOT_DIR / 'src' / 'uninstaller_gui.py')],
+    pathex=[str(ROOT_DIR)],
     binaries=[],
     datas=[],
     hiddenimports=[],
@@ -35,5 +37,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets/images/app_icon.ico'],
+    icon=[str(ROOT_DIR / 'assets' / 'images' / 'app_icon.ico')],
 )

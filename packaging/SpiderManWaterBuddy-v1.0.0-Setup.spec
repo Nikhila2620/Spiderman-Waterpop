@@ -1,11 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
 
+ROOT_DIR = Path(SPECPATH).parent
 
 a = Analysis(
-    ['src/installer_gui.py'],
-    pathex=[],
+    [str(ROOT_DIR / 'src' / 'installer_gui.py')],
+    pathex=[str(ROOT_DIR)],
     binaries=[],
-    datas=[('dist/SpiderManWaterBuddy-v1.0.0-Portable.zip', '.')],
+    datas=[(str(ROOT_DIR / 'dist' / 'SpiderManWaterBuddy-v1.0.0-Portable.zip'), '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -35,5 +37,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets/images/app_icon.ico'],
+    icon=[str(ROOT_DIR / 'assets' / 'images' / 'app_icon.ico')],
 )

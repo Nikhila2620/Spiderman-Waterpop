@@ -53,18 +53,18 @@ class SetupWizardDialog(QDialog):
         # Header Title Banner
         header = QHBoxLayout()
         header_title = QLabel("🕷️ SPIDER-MAN WATER BUDDY SETUP")
-        header_title.setStyleSheet(f"color: {TOKENS.ACCENT_RED_HOVER}; font-size: 14px; font-weight: 800; letter-spacing: 1.5px;")
+        header_title.setStyleSheet(f"color: {TOKENS.ACCENT_AQUA}; font-size: 14px; font-weight: 800; letter-spacing: 1.5px;")
         header.addWidget(header_title)
         header.addStretch()
         self.step_label = QLabel("Step 1 of 4")
-        self.step_label.setStyleSheet("color: #94a3b8; font-size: 12px; font-weight: 600;")
+        self.step_label.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 12px; font-weight: 600;")
         header.addWidget(self.step_label)
         layout.addLayout(header)
 
         # Divider
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setStyleSheet("color: #2e2642;")
+        divider.setStyleSheet(f"color: {TOKENS.BORDER_GLASS};")
         layout.addWidget(divider)
 
         # Stacked Pages
@@ -78,13 +78,19 @@ class SetupWizardDialog(QDialog):
         # Navigation Bar (Back, Next/Finish)
         nav_layout = QHBoxLayout()
         self.btn_back = QPushButton("← Back")
-        self.btn_back.setStyleSheet("""
-            QPushButton {
-                background-color: #27223b;
-                color: #cbd5e1;
-                border: 1px solid #41385f;
-            }
-            QPushButton:hover { background-color: #352f4e; }
+        self.btn_back.setStyleSheet(f"""
+            QPushButton {{
+                background-color: rgba(12, 26, 46, 0.8);
+                color: {TOKENS.TEXT_SECONDARY};
+                border: 1px solid {TOKENS.BORDER_GLASS};
+                border-radius: {TOKENS.RADIUS_MD};
+                padding: 7px 14px;
+                font-weight: 600;
+            }}
+            QPushButton:hover {{
+                background-color: rgba(16, 36, 64, 0.95);
+                color: #ffffff;
+            }}
         """)
         self.btn_back.clicked.connect(self._go_back)
         self.btn_back.setEnabled(False)
@@ -296,9 +302,9 @@ class SetupWizardDialog(QDialog):
         self.summary_box.setStyleSheet(f"""
             QFrame {{
                 background-color: {TOKENS.BG_CARD};
-                border: 1.5px solid {TOKENS.ACCENT_RED};
+                border: 1.5px solid {TOKENS.BORDER_GLASS_ACTIVE};
                 border-radius: {TOKENS.RADIUS_LG};
-                padding: 12px;
+                padding: 14px;
             }}
             QLabel {{
                 font-size: 12.5px;
@@ -365,11 +371,16 @@ class SetupWizardDialog(QDialog):
                 self.btn_next.setText("Finish & Save ✨")
                 self.btn_next.setStyleSheet(f"""
                     QPushButton {{
-                        background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {TOKENS.ACCENT_RED}, stop: 1 {TOKENS.ACCENT_RED_ACTIVE});
-                        color: #ffffff;
-                        border: 1px solid {TOKENS.ACCENT_RED_HOVER};
+                        background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 {TOKENS.ACCENT_AZURE}, stop: 1 {TOKENS.ACCENT_AQUA});
+                        color: #051324;
+                        font-weight: 800;
+                        border: none;
+                        border-radius: {TOKENS.RADIUS_MD};
+                        padding: 8px 16px;
                     }}
-                    QPushButton:hover {{ background: {TOKENS.ACCENT_RED_HOVER}; }}
+                    QPushButton:hover {{
+                        background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #3b9eff, stop: 1 #4df4ff);
+                    }}
                 """)
         else:
             self._save_and_finish()

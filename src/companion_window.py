@@ -105,7 +105,7 @@ class CompanionWindow(QWidget):
 
         badge_text = f"🕸️ {self.settings.companion_name.upper()} WATER BUDDY"
         self.badge = QLabel(badge_text)
-        self.badge.setStyleSheet("color: #f43f5e; font-size: 10px; font-weight: 800; letter-spacing: 1px;")
+        self.badge.setStyleSheet(f"color: {TOKENS.ACCENT_AQUA}; font-size: 10px; font-weight: 800; letter-spacing: 1px;")
         header.addWidget(self.badge)
         header.addStretch()
 
@@ -113,19 +113,19 @@ class CompanionWindow(QWidget):
         self.btn_close.setFixedSize(20, 20)
         self.btn_close.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_close.setToolTip("Dismiss")
-        self.btn_close.setStyleSheet("""
-            QPushButton {
+        self.btn_close.setStyleSheet(f"""
+            QPushButton {{
                 background-color: transparent;
-                color: #94a3b8;
+                color: {TOKENS.TEXT_MUTED};
                 border: none;
                 font-size: 11px;
                 padding: 0;
-            }
-            QPushButton:hover {
-                color: #f43f5e;
-                background-color: rgba(244, 63, 94, 0.2);
+            }}
+            QPushButton:hover {{
+                color: {TOKENS.ACCENT_AQUA};
+                background-color: rgba(0, 240, 255, 0.15);
                 border-radius: 10px;
-            }
+            }}
         """)
         self.btn_close.clicked.connect(self._on_dismiss_clicked)
         header.addWidget(self.btn_close)
@@ -135,14 +135,14 @@ class CompanionWindow(QWidget):
         self.dialogue_label = QLabel(self._get_personalized_greeting())
         self.dialogue_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.dialogue_label.setWordWrap(True)
-        self.dialogue_label.setStyleSheet("""
-            color: #f1f5f9;
+        self.dialogue_label.setStyleSheet(f"""
+            color: {TOKENS.TEXT_PRIMARY};
             font-size: 12px;
             font-weight: 600;
-            padding: 6px 8px;
-            background-color: rgba(255, 255, 255, 0.07);
+            padding: 7px 10px;
+            background-color: rgba(12, 26, 46, 0.75);
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(0, 240, 255, 0.18);
         """)
         card_layout.addWidget(self.dialogue_label)
 
@@ -154,35 +154,40 @@ class CompanionWindow(QWidget):
 
         self.btn_yes = QPushButton("💧 YES, DRANK!")
         self.btn_yes.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.btn_yes.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #059669, stop: 1 #047857);
-                color: #ffffff;
+        self.btn_yes.setStyleSheet(f"""
+            QPushButton {{
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #00c880, stop: 1 {TOKENS.ACCENT_MINT});
+                color: #041a12;
                 font-size: 11px;
-                border: 1px solid #10b981;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #10b981, stop: 1 #059669);
-            }
-            QPushButton:pressed { background-color: #064e3b; }
+                font-weight: 800;
+                border: 1px solid {TOKENS.ACCENT_AQUA};
+                border-radius: 8px;
+            }}
+            QPushButton:hover {{
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 {TOKENS.ACCENT_MINT}, stop: 1 #4dffb8);
+            }}
+            QPushButton:pressed {{ background-color: #009966; }}
         """)
         self.btn_yes.clicked.connect(self._on_yes_clicked)
         action_layout.addWidget(self.btn_yes)
 
         self.btn_no = QPushButton("⏳ NOT YET")
         self.btn_no.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.btn_no.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #2a1826, stop: 1 #1d101b);
-                color: #fca5a5;
+        self.btn_no.setStyleSheet(f"""
+            QPushButton {{
+                background: rgba(12, 26, 46, 0.85);
+                color: {TOKENS.TEXT_SECONDARY};
                 font-size: 11px;
-                border: 1px solid #e11d48;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #e11d48, stop: 1 #9f1239);
-                color: #ffffff;
-            }
-            QPushButton:pressed { background-color: #881337; }
+                font-weight: 700;
+                border: 1px solid rgba(0, 240, 255, 0.25);
+                border-radius: 8px;
+            }}
+            QPushButton:hover {{
+                background: rgba(16, 36, 64, 0.95);
+                color: {TOKENS.TEXT_PRIMARY};
+                border-color: rgba(0, 240, 255, 0.55);
+            }}
+            QPushButton:pressed {{ background-color: #071526; }}
         """)
         self.btn_no.clicked.connect(self._on_no_clicked)
         action_layout.addWidget(self.btn_no)
@@ -198,7 +203,7 @@ class CompanionWindow(QWidget):
 
         snooze_label = QLabel("Remind me in:")
         snooze_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        snooze_label.setStyleSheet("color: #94a3b8; font-size: 10.5px; font-weight: 600;")
+        snooze_label.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-size: 10.5px; font-weight: 600;")
         snooze_layout.addWidget(snooze_label)
 
         snooze_btn_layout = QHBoxLayout()
@@ -208,19 +213,21 @@ class CompanionWindow(QWidget):
         for minutes in (5, 10, 15):
             btn = QPushButton(f"{minutes} min")
             btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: rgba(225, 29, 72, 0.12);
-                    color: #fb7185;
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: rgba(0, 240, 255, 0.10);
+                    color: {TOKENS.ACCENT_AQUA};
                     font-size: 10.5px;
-                    border: 1px solid rgba(244, 63, 94, 0.35);
+                    font-weight: 700;
+                    border: 1px solid rgba(0, 240, 255, 0.35);
+                    border-radius: 6px;
                     padding: 5px 8px;
-                }
-                QPushButton:hover {
-                    background-color: #e11d48;
+                }}
+                QPushButton:hover {{
+                    background-color: rgba(0, 240, 255, 0.25);
                     color: #ffffff;
-                    border-color: #f43f5e;
-                }
+                    border-color: {TOKENS.ACCENT_AQUA};
+                }}
             """)
             btn.clicked.connect(lambda chk=False, m=minutes: self._on_snooze_selected(m))
             snooze_btn_layout.addWidget(btn)
@@ -386,14 +393,14 @@ class CompanionWindow(QWidget):
         self.spidey.set_state(SpideyWidget.STATE_HAPPY)
         yes_msg = self.settings.message_yes.replace("[Name]", self.settings.user_name)
         self.dialogue_label.setText(yes_msg)
-        self.dialogue_label.setStyleSheet("""
-            color: #34d399;
+        self.dialogue_label.setStyleSheet(f"""
+            color: {TOKENS.ACCENT_MINT};
             font-size: 12px;
-            font-weight: 700;
-            padding: 6px 8px;
-            background-color: rgba(16, 185, 129, 0.18);
+            font-weight: 800;
+            padding: 7px 10px;
+            background-color: rgba(0, 230, 153, 0.16);
             border-radius: 8px;
-            border: 1px solid #10b981;
+            border: 1px solid {TOKENS.ACCENT_MINT};
         """)
         self.btn_yes.setEnabled(False)
         self.btn_no.setEnabled(False)

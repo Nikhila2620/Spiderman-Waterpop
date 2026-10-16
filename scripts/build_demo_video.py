@@ -460,15 +460,35 @@ def assemble_final_video(total_duration: float):
     print("\n[STEP 6] Rendering final master MP4 (with subtitle burn-in & audio ducking)...")
     subprocess.run(cmd_master, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
 
+    # 4. Also render clean version WITHOUT subtitles
+    nocaptions_output = DIST_DIR / "SpiderManWaterBuddy-LinkedIn-Demo-NoCaptions.mp4"
+    cmd_nocaptions = [
+        FFMPEG_EXE, "-y",
+        "-i", str(combined_narration),
+        "-i", str(ambient_music),
+        "-filter_complex",
+        "[1:a]volume=0.18[bgm];"
+        "[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[a]",
+        "-map", "0:v",
+        "-map", "[a]",
+        "-c:v", "copy",
+        "-c:a", "aac", "-b:a", "192k",
+        "-movflags", "+faststart",
+        str(nocaptions_output)
+    ]
+    print("[STEP 6b] Rendering clean version without captions...")
+    subprocess.run(cmd_nocaptions, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+
     size_mb = final_output.stat().st_size / (1024 * 1024)
+    size_nocap_mb = nocaptions_output.stat().st_size / (1024 * 1024)
     print(f"\n==================================================")
     print(f" DEMO VIDEO GENERATION COMPLETED SUCCESSFULLY!")
-    print(f" File:     {final_output}")
-    print(f" Size:     {size_mb:.2f} MB")
-    print(f" Format:   1080p 16:9 MP4 (30 FPS, H.264/AAC)")
-    print(f" Duration: {total_duration:.1f} seconds (~{total_duration/60:.2f} minutes)")
+    print(f" 1. Captions Version:    {final_output} ({size_mb:.2f} MB)")
+    print(f" 2. No-Captions Version:  {nocaptions_output} ({size_nocap_mb:.2f} MB)")
+    print(f" Format:                 1080p 16:9 MP4 (30 FPS, H.264/AAC)")
+    print(f" Duration:               {total_duration:.1f} seconds (~{total_duration/60:.2f} minutes)")
     print(f"==================================================")
-    return final_output
+    return final_output, nocaptions_output
 
 
 async def main():

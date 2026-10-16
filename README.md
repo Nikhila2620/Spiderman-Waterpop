@@ -11,7 +11,7 @@ A lightweight, standalone, installable Windows desktop companion featuring a pho
 ### 🕷️ Photorealistic 3D Superhero Companion
 - **Corner Web-Hang**: Spider-Man hangs upside down by a glowing web strand anchored to your screen corner/bezel.
 - **True Transparency & Hardware Click-Through**: Completely transparent frameless overlay using Windows extended styles (`WS_EX_TRANSPARENT | WS_EX_LAYERED`). Clicks pass straight through to your games and desktop work.
-- **Global Interaction Hotkey**: Press **`Ctrl + Alt + S`** anytime to toggle click-through and interact directly with Spider-Man.
+- **Global Interaction Hotkey**: Press **`Ctrl + Alt + W`** anytime to toggle click-through and interact directly with Spider-Man.
 - **Physical Pendulum & Elastic Recoil**: Natural physics-based swinging on the web strand, and elastic mouse drag-and-release with realistic spring recoil.
 - **Expressive Reactions**: Eye-lens expansion and web-wave on mouse hover, thumbs-up celebration on **YES**, and funny slumped disappointment on **NO**.
 
@@ -35,6 +35,7 @@ Unlike heavy Electron-based desktop companions, Spider-Man Water Buddy is powere
 | Metric | Measured Result |
 | :--- | :--- |
 | **Startup Memory** | **~122.9 MB** |
+| **Idle Memory (Steady State)** | **~44.0 MB** |
 | **Peak Working Set** | **~138.6 MB** |
 | **Idle CPU Usage** | **0.00%** |
 | **Animation CPU Usage** | **< 1.0%** |
@@ -49,6 +50,7 @@ Download and run:
 ```
 dist\SpiderManWaterBuddy-v1.0.0-Setup.exe
 ```
+Or double-click `INSTALL_APP.bat`.
 - Installs to `%LOCALAPPDATA%\Programs\SpiderManWaterBuddy`.
 - Automatically generates Desktop and Start Menu shortcuts.
 - Registers in Windows *Installed Apps* / *Add or Remove Programs*.
@@ -58,7 +60,7 @@ Extract:
 ```
 dist\SpiderManWaterBuddy-v1.0.0-Portable.zip
 ```
-Double-click `SpiderManWaterBuddy.exe` to run instantly from any folder or USB drive.
+Double-click `SpiderManWaterBuddy.exe` or `START_APP.bat` to run instantly from any folder or USB drive.
 
 ### 3. Uninstalling
 - Launch from Windows *Installed Apps / Settings*, or run `uninstall.exe` in the application directory.
@@ -76,7 +78,7 @@ Double-click `SpiderManWaterBuddy.exe` to run instantly from any folder or USB d
   ```powershell
   python -m venv .venv
   .\.venv\Scripts\Activate.ps1
-  pip install -r requirements.txt
+  pip install -r requirements-dev.txt
   ```
 
 ### Running Locally
@@ -85,32 +87,20 @@ Double-click `SpiderManWaterBuddy.exe` to run instantly from any folder or USB d
 ```
 
 ### Running Automated Test Suite
-- Comprehensive unit and state-machine tests:
+- Comprehensive 8-test unit, state-machine, and security suite:
   ```powershell
-  .\.venv\Scripts\python.exe tests\test_full_suite.py
-  ```
-- Resource profiling and memory benchmark:
-  ```powershell
-  .\.venv\Scripts\python.exe tests\profile_resources.py
+  .\.venv\Scripts\python.exe -m pytest tests/test_full_suite.py -v
   ```
 
-### Building Distributables
-1. **Compile Application Executable**:
-   ```powershell
-   .\.venv\Scripts\pyinstaller.exe --onedir --noconsole --name "SpiderManWaterBuddy" --icon "assets/images/app_icon.ico" --add-data "assets;assets" run.py
-   ```
-2. **Compile Uninstaller**:
-   ```powershell
-   .\.venv\Scripts\pyinstaller.exe --onefile --noconsole --name "uninstall" --distpath "dist/SpiderManWaterBuddy" --icon "assets/images/app_icon.ico" src/uninstaller_gui.py
-   ```
-3. **Generate Portable Zip**:
-   ```powershell
-   Compress-Archive -Path ".\dist\SpiderManWaterBuddy\*" -DestinationPath ".\dist\SpiderManWaterBuddy-v1.0.0-Portable.zip" -Force
-   ```
-4. **Compile Setup Installer**:
-   ```powershell
-   .\.venv\Scripts\pyinstaller.exe --onefile --noconsole --name "SpiderManWaterBuddy-v1.0.0-Setup" --icon "assets/images/app_icon.ico" --add-data "dist/SpiderManWaterBuddy-v1.0.0-Portable.zip;." src/installer_gui.py
-   ```
+### Building Distributables (Automated)
+Run the automated packaging script to compile the onedir application, uninstaller, portable zip, and single-file setup installer:
+```powershell
+.\.venv\Scripts\python.exe scripts/build_dist.py
+```
+Outputs are placed directly in `dist/`:
+- `dist/SpiderManWaterBuddy/` (portable onedir folder)
+- `dist/SpiderManWaterBuddy-v1.0.0-Portable.zip` (portable archive, 88 MB)
+- `dist/SpiderManWaterBuddy-v1.0.0-Setup.exe` (standalone setup installer, 131 MB)
 
 ---
 

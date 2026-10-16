@@ -434,6 +434,8 @@ class CompanionWindow(QWidget):
         self.snooze_widget.setVisible(True)
         self.declined.emit()
         self.adjustSize()
+        # Fallback: if user doesn't pick a snooze button, automatically auto-close after 15 seconds
+        self._auto_close_timer.start(15000)
 
     def _on_snooze_selected(self, minutes: int):
         snooze_msg = self.settings.message_snooze.replace("{minutes}", str(minutes)).replace("[Name]", self.settings.user_name)

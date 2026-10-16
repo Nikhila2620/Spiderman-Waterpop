@@ -145,7 +145,12 @@ class ReminderEngine(QObject):
         now = datetime.now()
 
         # If in quiet hours, make sure state reflects it
-        if self.is_in_quiet_hours(now) and self.state in (ReminderState.IDLE, ReminderState.SNOOZED, ReminderState.RETRY_SCHEDULED):
+        if self.is_in_quiet_hours(now) and self.state in (
+            ReminderState.IDLE,
+            ReminderState.SNOOZED,
+            ReminderState.RETRY_SCHEDULED,
+            ReminderState.WAITING_FOR_RESPONSE,
+        ):
             self._set_state(ReminderState.QUIET_HOURS)
             secs = self.get_seconds_until_quiet_hours_end(now)
             self._target_time = now + timedelta(seconds=secs)

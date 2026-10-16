@@ -248,6 +248,9 @@ class SpiderManWaterBuddyApp(QObject):
         else:
             self.act_toggle_pause.setText("⏸️ Pause Reminders")
 
+        if state == ReminderState.QUIET_HOURS and self.companion._in_reminder_mode:
+            self.companion._on_auto_close()
+
     def _toggle_companion_visibility(self):
         if self.companion.isVisible():
             self.hide_companion()

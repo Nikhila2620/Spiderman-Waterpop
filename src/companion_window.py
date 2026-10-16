@@ -63,6 +63,8 @@ class CompanionWindow(QWidget):
 
         self._init_ui()
         self._setup_screen_monitoring()
+        self.spidey.set_animation_enabled(self.settings.animation_enabled)
+        self.spidey.set_performance_mode(self.settings.performance_mode)
         self.reposition()
         self.apply_click_through(self.settings.click_through_enabled)
 

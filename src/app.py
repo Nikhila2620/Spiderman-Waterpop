@@ -260,6 +260,8 @@ class SpiderManWaterBuddyApp(QObject):
 
     def _on_settings_updated(self):
         self.companion.badge.setText(f"🕸️ {self.settings.companion_name.upper()} WATER BUDDY")
+        self.companion.spidey.set_animation_enabled(self.settings.animation_enabled)
+        self.companion.spidey.set_performance_mode(self.settings.performance_mode)
         self.companion.reposition()
         self.companion.apply_click_through(self.settings.click_through_enabled)
         if self.settings.companion_visible:

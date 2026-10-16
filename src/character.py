@@ -56,8 +56,36 @@ class SpideyWidget(QWidget):
         self._pixmap_3d = None
         self._renderers = {}
 
+        self._animation_enabled = True
+        self._performance_mode = False
+
         self._init_assets()
         self._init_animations()
+
+    def set_animation_enabled(self, enabled: bool):
+        """Toggles the pendulum swing animation on or off."""
+        self._animation_enabled = enabled
+        if not enabled:
+            self._swing_anim.stop()
+            self._swing_angle = 0.0
+            self.update()
+        else:
+            if self._swing_anim.state() != QPropertyAnimation.State.Running:
+                self._swing_anim.start()
+
+    def set_performance_mode(self, perf_mode: bool):
+        """Reduces animation frequency and overhead for battery saving."""
+        self._performance_mode = perf_mode
+        if perf_mode:
+            self._swing_anim.setDuration(4000)
+        else:
+            if self._state == self.STATE_HAPPY:
+                self._swing_anim.setDuration(1200)
+            elif self._state == self.STATE_DISAPPOINTED:
+                self._swing_anim.setDuration(3600)
+            else:
+                self._swing_anim.setDuration(2600)
+        self.update()
 
     def _init_assets(self):
         """Loads the AAA 3D photorealistic render and vector overlays."""
@@ -120,6 +148,11 @@ class SpideyWidget(QWidget):
         self._base_state = state
         self._state = state
 
+        if not self._animation_enabled:
+            self._swing_angle = 0.0
+            self.update()
+            return
+
         if state == self.STATE_HAPPY:
             self._swing_anim.setDuration(1200)
             self._swing_anim.setStartValue(-7.5)
@@ -131,7 +164,8 @@ class SpideyWidget(QWidget):
             self._swing_anim.setKeyValueAt(0.5, 2.0)
             self._swing_anim.setEndValue(-2.0)
         else:
-            self._swing_anim.setDuration(2600)
+            duration = 4000 if self._performance_mode else 2600
+            self._swing_anim.setDuration(duration)
             self._swing_anim.setStartValue(-4.5)
             self._swing_anim.setKeyValueAt(0.5, 4.5)
             self._swing_anim.setEndValue(-4.5)

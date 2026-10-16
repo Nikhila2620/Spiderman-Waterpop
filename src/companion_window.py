@@ -23,6 +23,7 @@ from PySide6.QtGui import QColor, QFont, QCursor, QGuiApplication, QScreen
 
 from src.character import SpideyWidget
 from src.config import ConfigManager, AppSettings
+from src.theme import get_companion_card_qss, TOKENS
 
 logger = logging.getLogger("SpiderManWaterBuddy.CompanionWindow")
 
@@ -83,27 +84,7 @@ class CompanionWindow(QWidget):
         # 2. Cozy Speech & Action Card
         self.card = QFrame()
         self.card.setObjectName("spideyCard")
-        self.card.setStyleSheet("""
-            #spideyCard {
-                background: qlineargradient(
-                    x1: 0, y1: 0, x2: 1, y2: 1,
-                    stop: 0 rgba(22, 18, 32, 0.95),
-                    stop: 1 rgba(14, 11, 22, 0.97)
-                );
-                border: 1.5px solid #f43f5e;
-                border-radius: 16px;
-            }
-            QLabel {
-                color: #f8fafc;
-                font-family: 'Segoe UI', -apple-system, sans-serif;
-            }
-            QPushButton {
-                font-family: 'Segoe UI', -apple-system, sans-serif;
-                font-weight: 700;
-                border-radius: 8px;
-                padding: 7px 12px;
-            }
-        """)
+        self.card.setStyleSheet(get_companion_card_qss())
 
         # Drop shadow for soft depth
         shadow = QGraphicsDropShadowEffect(self)

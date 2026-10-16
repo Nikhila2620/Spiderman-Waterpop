@@ -27,6 +27,7 @@ from PySide6.QtGui import QFont, QCursor, QColor
 from src.config import ConfigManager, AppSettings
 from src.startup_manager import StartupManager
 from src.reminder_engine import ReminderEngine, ReminderState
+from src.theme import get_dashboard_qss, TOKENS
 
 
 class DashboardWindow(QWidget):
@@ -53,77 +54,7 @@ class DashboardWindow(QWidget):
         self.load_values_from_settings()
 
     def _init_ui(self):
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #110e1c;
-                color: #f1f5f9;
-                font-family: 'Segoe UI', -apple-system, sans-serif;
-            }
-            QTabWidget::pane {
-                border: 1px solid #2e2646;
-                background-color: #161224;
-                border-radius: 12px;
-                top: -1px;
-            }
-            QTabBar::tab {
-                background: #110e1c;
-                color: #94a3b8;
-                border: 1px solid #2e2646;
-                border-bottom: none;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-                padding: 10px 18px;
-                margin-right: 4px;
-                font-weight: 700;
-                font-size: 13px;
-            }
-            QTabBar::tab:selected {
-                background: #1e1832;
-                color: #38bdf8;
-                border-color: #38bdf8;
-            }
-            QTabBar::tab:hover {
-                color: #ffffff;
-            }
-            QLineEdit, QSpinBox, QTimeEdit, QComboBox {
-                background-color: #1e1830;
-                color: #ffffff;
-                border: 1.5px solid #3d335c;
-                border-radius: 8px;
-                padding: 6px 10px;
-                font-size: 13px;
-            }
-            QLineEdit:focus, QSpinBox:focus, QTimeEdit:focus, QComboBox:focus {
-                border-color: #38bdf8;
-            }
-            QCheckBox {
-                color: #cbd5e1;
-                font-size: 13px;
-                spacing: 8px;
-            }
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QPushButton {
-                font-weight: 700;
-                border-radius: 8px;
-                padding: 8px 14px;
-                font-size: 12.5px;
-            }
-            QProgressBar {
-                background-color: #1b162a;
-                border: 1px solid #362d52;
-                border-radius: 8px;
-                text-align: center;
-                color: #ffffff;
-                font-weight: 700;
-            }
-            QProgressBar::chunk {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #0284c7, stop: 1 #38bdf8);
-                border-radius: 7px;
-            }
-        """)
+        self.setStyleSheet(get_dashboard_qss())
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 16, 20, 16)

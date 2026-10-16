@@ -24,6 +24,7 @@ from PySide6.QtCore import QTime
 
 from src.config import ConfigManager, AppSettings
 from src.startup_manager import StartupManager
+from src.theme import get_dialog_qss, TOKENS
 
 
 class SetupWizardDialog(QDialog):
@@ -43,42 +44,7 @@ class SetupWizardDialog(QDialog):
         self._init_ui()
 
     def _init_ui(self):
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #12101a;
-                color: #f8fafc;
-                font-family: 'Segoe UI', -apple-system, sans-serif;
-            }
-            QLabel {
-                color: #f1f5f9;
-            }
-            QLineEdit, QSpinBox, QTimeEdit {
-                background-color: #1e1a2e;
-                color: #ffffff;
-                border: 1.5px solid #3f395b;
-                border-radius: 8px;
-                padding: 6px 10px;
-                font-size: 13px;
-            }
-            QLineEdit:focus, QSpinBox:focus, QTimeEdit:focus {
-                border-color: #38bdf8;
-            }
-            QRadioButton, QCheckBox {
-                color: #cbd5e1;
-                font-size: 13px;
-                spacing: 8px;
-            }
-            QRadioButton::indicator, QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QPushButton {
-                font-weight: 700;
-                border-radius: 8px;
-                padding: 8px 16px;
-                font-size: 13px;
-            }
-        """)
+        self.setStyleSheet(get_dialog_qss())
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(28, 24, 28, 24)

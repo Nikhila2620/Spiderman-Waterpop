@@ -24,6 +24,7 @@ from src.reminder_engine import ReminderEngine, ReminderState
 from src.companion_window import CompanionWindow
 from src.dashboard_window import DashboardWindow
 from src.wizard_dialog import SetupWizardDialog
+from src.theme import get_tray_menu_qss
 
 logger = logging.getLogger("SpiderManWaterBuddy.App")
 SINGLE_INSTANCE_KEY = "SpiderManWaterBuddySingleInstanceServer_v1"
@@ -100,24 +101,7 @@ class SpiderManWaterBuddyApp(QObject):
                 self.tray_icon.setIcon(self.app.style().standardIcon(self.app.style().StandardPixmap.SP_ComputerIcon))
 
         tray_menu = QMenu()
-        tray_menu.setStyleSheet("""
-            QMenu {
-                background-color: #1a152b;
-                color: #f1f5f9;
-                border: 1px solid #38bdf8;
-                border-radius: 8px;
-                padding: 6px;
-                font-family: 'Segoe UI', sans-serif;
-            }
-            QMenu::item {
-                padding: 6px 18px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #0284c7;
-                color: #ffffff;
-            }
-        """)
+        tray_menu.setStyleSheet(get_tray_menu_qss())
 
         # Open Dashboard Action
         act_dashboard = QAction("📊 Open Settings & Dashboard", self)

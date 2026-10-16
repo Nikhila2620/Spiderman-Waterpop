@@ -159,8 +159,9 @@ class SpiderManWaterBuddyApp(QObject):
         self.tray_icon.show()
 
     def _setup_shortcuts(self):
-        """Global window shortcut to toggle interaction mode (Ctrl+Alt+S)."""
-        self.shortcut = QShortcut(QKeySequence("Ctrl+Alt+S"), self.companion)
+        """Window shortcut to toggle interaction mode (configurable, default Ctrl+Alt+W)."""
+        key_seq = self.settings.interaction_mode_shortcut or "Ctrl+Alt+W"
+        self.shortcut = QShortcut(QKeySequence(key_seq), self.companion)
         self.shortcut.activated.connect(self._toggle_click_through)
 
     def _wire_signals(self):
@@ -178,38 +179,37 @@ class SpiderManWaterBuddyApp(QObject):
         self.dashboard.triggerReminderRequested.connect(self._remind_now)
         self.dashboard.testAnimationRequested.connect(self._on_test_animation)
 
-    def run(self):
+    def run(self, start_minimized_override: bool = False):
         """Launches the application, showing wizard if first run."""
         if not self.settings.first_run_completed:
             wizard = SetupWizardDialog(self.config_manager)
             wizard.wizardCompleted.connect(self._on_wizard_completed)
             wizard.exec()
         else:
-            self._start_main_workflow()
+            self._start_main_workflow(minimized=start_minimized_override or self.settings.start_minimized)
 
     def _on_wizard_completed(self, new_settings):
         logger.info("First run wizard completed successfully.")
         self.dashboard.load_values_from_settings()
-        self._start_main_workflow()
+        self._start_main_workflow(minimized=self.settings.start_minimized)
 
-    def _start_main_workflow(self):
+    def _start_main_workflow(self, minimized: bool = False):
         # Start minimized or show companion
-        if self.settings.companion_visible:
+        if minimized:
+            self.companion.hide()
+            self.act_toggle_comp.setText("👁️ Show Companion")
+            logger.info("Application started minimized to system tray.")
+        elif self.settings.companion_visible:
             self.show_companion()
         else:
             self.companion.hide()
             self.act_toggle_comp.setText("👁️ Show Companion")
-
-        if not self.settings.start_minimized:
-            # Show companion prominently
-            self.show_companion()
 
     def show_companion(self):
         self.settings.companion_visible = True
         self.config_manager.save()
         self.companion.reposition()
         self.companion.show()
-        self.companion.raise_()
         self.act_toggle_comp.setText("👁️ Hide Companion")
 
     def hide_companion(self):
@@ -263,9 +263,10 @@ class SpiderManWaterBuddyApp(QObject):
         self.config_manager.save()
         self.companion.apply_click_through(self.settings.click_through_enabled)
         state_str = "ENABLED" if self.settings.click_through_enabled else "DISABLED"
+        shortcut = self.settings.interaction_mode_shortcut or "Ctrl+Alt+W"
         self.tray_icon.showMessage(
             "Spider-Man Water Buddy",
-            f"Click-through mode {state_str}. (Press Ctrl+Alt+S to toggle)",
+            f"Click-through mode {state_str}. (Press {shortcut} to toggle)",
             QSystemTrayIcon.MessageIcon.Information,
             2000,
         )

@@ -42,13 +42,14 @@ class CompanionWindow(QWidget):
         self.config_manager = config_manager
         self.settings = config_manager.settings
 
-        # Window Flags: Frameless, Always on Top, Tool Window
+        # Window Flags: Frameless, Always on Top, Tool Window (does not steal focus or show in Alt-Tab)
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.SubWindow
+            | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WA_ShowWithoutActivating, True)
         self.setMouseTracking(True)
 
         self._drag_start_pos: Optional[QPoint] = None
@@ -298,7 +299,7 @@ class CompanionWindow(QWidget):
 
         self.move(x, y)
 
-    # Windows Click-Through Support
+    # Windows Click-Through & Focus Management
     def apply_click_through(self, enable: bool):
         """Enables hardware click-through on Windows so clicks pass to background apps."""
         if sys.platform != "win32":
@@ -309,10 +310,12 @@ class CompanionWindow(QWidget):
             GWL_EXSTYLE = -20
             WS_EX_TRANSPARENT = 0x00000020
             WS_EX_LAYERED = 0x00080000
+            WS_EX_NOACTIVATE = 0x08000000
 
             style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+            style |= (WS_EX_LAYERED | WS_EX_NOACTIVATE)
             if enable and not self._in_reminder_mode:
-                ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_LAYERED)
+                ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT)
                 logger.info("Click-through ENABLED")
             else:
                 ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style & ~WS_EX_TRANSPARENT)
@@ -350,12 +353,29 @@ class CompanionWindow(QWidget):
 
     # Reminder trigger mode
     def trigger_reminder_mode(self):
-        """Enters active reminder interaction mode (temporarily suspends click-through)."""
+        """Enters active reminder interaction mode without stealing keyboard focus."""
         self._in_reminder_mode = True
         self.apply_click_through(False)
         self.reset_card_ui()
         self.show()
-        self.raise_()
+
+        if sys.platform == "win32":
+            try:
+                hwnd = int(self.winId())
+                HWND_TOPMOST = -1
+                SWP_NOSIZE = 0x0001
+                SWP_NOMOVE = 0x0002
+                SWP_NOACTIVATE = 0x0010
+                SWP_SHOWWINDOW = 0x0040
+                ctypes.windll.user32.SetWindowPos(
+                    hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW
+                )
+            except Exception as e:
+                logger.warning(f"Failed to SetWindowPos without activate: {e}")
+                self.raise_()
+        else:
+            self.raise_()
 
     def reset_card_ui(self):
         self._auto_close_timer.stop()

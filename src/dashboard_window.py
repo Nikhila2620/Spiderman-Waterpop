@@ -455,7 +455,7 @@ class DashboardWindow(QWidget):
         self.chk_click_through = QCheckBox("Enable Click-Through (Clicks pass through companion to background apps)")
         a_layout.addWidget(self.chk_click_through)
 
-        lbl_hint = QLabel("💡 Press 'Ctrl+Alt+S' or use the System Tray to toggle interaction mode anytime.")
+        lbl_hint = QLabel("💡 Press 'Ctrl+Alt+W' or use the System Tray to toggle interaction mode anytime.")
         lbl_hint.setStyleSheet("color: #94a3b8; font-size: 11.5px;")
         a_layout.addWidget(lbl_hint)
 

@@ -82,10 +82,18 @@ class InstallWorker(QThread):
 
             if payload_zip.exists():
                 self.progressUpdated.emit(25, "Extracting application package...")
+                resolved_target = self.target_dir.resolve()
                 with zipfile.ZipFile(payload_zip, "r") as zf:
                     names = zf.namelist()
                     if "SpiderManWaterBuddy.exe" not in names:
                         raise RuntimeError(f"Package {payload_zip.name} does not contain SpiderManWaterBuddy.exe")
+                    
+                    # Security: Validate all entries against Zip-Slip path traversal before extracting
+                    for name in names:
+                        entry_dest = (self.target_dir / name).resolve()
+                        if not str(entry_dest).startswith(str(resolved_target)):
+                            raise SecurityError(f"Security error: Archive entry '{name}' attempts path traversal outside target directory.")
+
                     total_files = len(names)
                     for idx, name in enumerate(names):
                         zf.extract(name, self.target_dir)
@@ -269,7 +277,9 @@ class InstallerWindow(QDialog):
 
     def _start_install(self):
         target_str = self.edit_path.text().strip()
-        if not target_str or len(target_str) < 3 or not Path(target_str).is_absolute():
+        invalid_roots = {"c:\\", "c:\\windows", "c:\\windows\\system32", "c:\\program files", "c:\\program files (x86)"}
+        
+        if not target_str or len(target_str) < 3 or not Path(target_str).is_absolute() or target_str.lower().rstrip("\\") in invalid_roots:
             target = self.default_install_dir
             self.edit_path.setText(str(target))
         else:

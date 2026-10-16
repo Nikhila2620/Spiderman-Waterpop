@@ -53,7 +53,7 @@ class AppSettings:
     character_scale: float = 1.0  # 0.7 to 1.5
     always_on_top: bool = True
     click_through_enabled: bool = False
-    interaction_mode_shortcut: str = "Ctrl+Alt+S"
+    interaction_mode_shortcut: str = "Ctrl+Alt+W"
     animation_enabled: bool = True
     mouse_follow_enabled: bool = True
     performance_mode: bool = False

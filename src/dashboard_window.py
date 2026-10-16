@@ -219,13 +219,13 @@ class DashboardWindow(QWidget):
         card_status.content_layout.addLayout(cs_box)
         telemetry_row.addWidget(card_status)
 
-        card_timer = GlassCard("Next Reminder", "Countdown to hydration prompt")
+        self.card_timer = GlassCard("Next Reminder", "Countdown to hydration prompt")
         ct_box = QHBoxLayout()
         self.lbl_countdown = QLabel("--:--")
         self.lbl_countdown.setStyleSheet(f"font-size: 24px; font-weight: 900; color: {TOKENS.ACCENT_AQUA};")
         ct_box.addWidget(self.lbl_countdown)
-        card_timer.content_layout.addLayout(ct_box)
-        telemetry_row.addWidget(card_timer)
+        self.card_timer.content_layout.addLayout(ct_box)
+        telemetry_row.addWidget(self.card_timer)
 
         layout.addLayout(telemetry_row)
 
@@ -584,16 +584,49 @@ class DashboardWindow(QWidget):
         self.engine.statsUpdated.connect(self._on_stats_updated)
 
     def _on_timer_tick(self, seconds: int):
+        if self.engine.state == ReminderState.QUIET_HOURS:
+            end_time_str = self.settings.quiet_hours_end
+            try:
+                t = datetime.strptime(end_time_str, "%H:%M")
+                formatted_end = t.strftime("%I:%M %p").lstrip("0")
+            except Exception:
+                formatted_end = end_time_str
+
+            hrs, rem = divmod(max(0, seconds), 3600)
+            mins, secs = divmod(rem, 60)
+
+            self.lbl_countdown.setText(f"Resumes {formatted_end}")
+            self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 900; color: {TOKENS.ACCENT_AQUA};")
+            if hasattr(self, "card_timer"):
+                self.card_timer.lbl_subtitle.setText(f"Sleeping • Resumes in {hrs}h {mins:02d}m")
+            self.lbl_countdown.setToolTip(
+                f"Quiet Hours are active ({self.settings.quiet_hours_start} to {self.settings.quiet_hours_end}).\n"
+                f"Hydration reminders will automatically resume at {formatted_end} (in {hrs}h {mins:02d}m {secs:02d}s)."
+            )
+            return
+
+        if hasattr(self, "card_timer"):
+            self.card_timer.lbl_subtitle.setText("Countdown to hydration prompt")
+
         if seconds < 0 or self.settings.reminders_paused or not self.settings.reminders_enabled:
             self.lbl_countdown.setText("Paused")
             self.lbl_countdown.setStyleSheet(f"font-size: 22px; font-weight: 900; color: {TOKENS.STATUS_WARNING};")
+            self.lbl_countdown.setToolTip("Reminders are currently paused.")
         elif seconds == 0:
             self.lbl_countdown.setText("DUE NOW!")
             self.lbl_countdown.setStyleSheet(f"font-size: 22px; font-weight: 900; color: {TOKENS.ACCENT_MINT};")
+            self.lbl_countdown.setToolTip("Hydration reminder is due right now!")
         else:
-            mins, secs = divmod(seconds, 60)
-            self.lbl_countdown.setText(f"{mins:02d}:{secs:02d}")
+            hrs, rem = divmod(seconds, 3600)
+            mins, secs = divmod(rem, 60)
+            if hrs > 0:
+                self.lbl_countdown.setText(f"{hrs:02d}:{mins:02d}:{secs:02d}")
+            else:
+                self.lbl_countdown.setText(f"{mins:02d}:{secs:02d}")
             self.lbl_countdown.setStyleSheet(f"font-size: 24px; font-weight: 900; color: {TOKENS.ACCENT_AQUA};")
+            self.lbl_countdown.setToolTip(
+                f"Next reminder in {hrs}h {mins}m {secs}s" if hrs > 0 else f"Next reminder in {mins}m {secs}s"
+            )
 
     def _on_state_changed(self, state: ReminderState):
         if state == ReminderState.PAUSED:
@@ -603,6 +636,9 @@ class DashboardWindow(QWidget):
         elif state == ReminderState.QUIET_HOURS:
             self.lbl_companion_status.setText("🌙 QUIET HOURS")
             self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.TEXT_MUTED};")
+            rem_secs = self.engine.get_seconds_remaining()
+            if rem_secs > 0:
+                self._on_timer_tick(rem_secs)
         elif state == ReminderState.WAITING_FOR_RESPONSE:
             self.lbl_companion_status.setText("💧 REMINDER ACTIVE")
             self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.ACCENT_AQUA};")
@@ -610,6 +646,8 @@ class DashboardWindow(QWidget):
             self.lbl_companion_status.setText("🟢 ACTIVE")
             self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.STATUS_SUCCESS};")
             self.btn_pause_toggle.setText("⏸️ Pause Reminders")
+            if hasattr(self, "card_timer"):
+                self.card_timer.lbl_subtitle.setText("Countdown to hydration prompt")
 
     def _on_stats_updated(self, count: int, ml: int):
         self.lbl_reminders_completed.setText(f"Completed Reminders Today: {count}")

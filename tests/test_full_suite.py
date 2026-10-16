@@ -176,7 +176,8 @@ def test_theme_tokens_and_stylesheets():
 
     assert TOKENS.BG_BASE.startswith("#")
     assert TOKENS.ACCENT_RED.startswith("#")
-    assert TOKENS.ACCENT_BLUE.startswith("#")
+    assert TOKENS.ACCENT_RUBY.startswith("#")
+    assert TOKENS.ACCENT_GOLD.startswith("#")
 
     dash_qss = get_dashboard_qss()
     assert "QWidget" in dash_qss

@@ -266,8 +266,8 @@ class SpideyWidget(QWidget):
             self._paint_disappointed_overlay(painter, char_rect)
 
     def _paint_hover_overlay(self, painter: QPainter, char_rect: QRectF):
-        """Cyan spider-sense tingling aura around mask."""
-        pen = QPen(QColor("#38bdf8"), 2.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        """Crimson spider-sense tingling aura around mask."""
+        pen = QPen(QColor("#f43f5e"), 2.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
         head_cx = char_rect.center().x()
@@ -276,7 +276,7 @@ class SpideyWidget(QWidget):
         painter.drawArc(int(head_cx - 48), int(head_cy - 36), 96, 72, 40 * 16, 100 * 16)
 
     def _paint_happy_overlay(self, painter: QPainter, char_rect: QRectF):
-        """Golden celebration sparkles & web burst."""
+        """Golden & ruby celebration sparkles & web burst."""
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor("#fbbf24"))
         cx = char_rect.left()
@@ -286,13 +286,13 @@ class SpideyWidget(QWidget):
         # Star 1 (Right)
         self._draw_star(painter, cx + cw * 0.85, cy + ch * 0.65, 8)
         # Star 2 (Left)
-        painter.setBrush(QColor("#38bdf8"))
+        painter.setBrush(QColor("#f43f5e"))
         self._draw_star(painter, cx + cw * 0.15, cy + ch * 0.45, 6)
 
     def _paint_disappointed_overlay(self, painter: QPainter, char_rect: QRectF):
-        """Comedic blue sweat drop."""
+        """Comedic silver sweat drop."""
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#38bdf8"))
+        painter.setBrush(QColor("#94a3b8"))
         cx = char_rect.left()
         cy = char_rect.top()
         cw = char_rect.width()

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QColor, QFont, QCursor, QGuiApplication
 
 from src.character import SpideyWidget
+from src.theme import TOKENS
 
 
 class SpideyWaterBuddyPopup(QWidget):
@@ -105,7 +106,7 @@ class SpideyWaterBuddyPopup(QWidget):
         header.setContentsMargins(0, 0, 0, 0)
 
         badge = QLabel("🕸️ SPIDER-MAN WATER BUDDY")
-        badge.setStyleSheet("color: #38bdf8; font-size: 10.5px; font-weight: 800; letter-spacing: 1px;")
+        badge.setStyleSheet(f"color: {TOKENS.ACCENT_RED_HOVER}; font-size: 10.5px; font-weight: 800; letter-spacing: 1px;")
         header.addWidget(badge)
         header.addStretch()
 
@@ -159,21 +160,21 @@ class SpideyWaterBuddyPopup(QWidget):
             QPushButton {
                 background: qlineargradient(
                     x1: 0, y1: 0, x2: 1, y2: 1,
-                    stop: 0 #0284c7, stop: 1 #0369a1
+                    stop: 0 #059669, stop: 1 #047857
                 );
                 color: #ffffff;
                 font-size: 11.5px;
-                border: 1px solid #38bdf8;
+                border: 1px solid #10b981;
             }
             QPushButton:hover {
                 background: qlineargradient(
                     x1: 0, y1: 0, x2: 1, y2: 1,
-                    stop: 0 #38bdf8, stop: 1 #0284c7
+                    stop: 0 #10b981, stop: 1 #059669
                 );
                 border-color: #ffffff;
             }
             QPushButton:pressed {
-                background-color: #075985;
+                background-color: #064e3b;
             }
         """)
         self.btn_yes.clicked.connect(self._on_yes_clicked)
@@ -228,19 +229,19 @@ class SpideyWaterBuddyPopup(QWidget):
             btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: rgba(56, 189, 248, 0.12);
-                    color: #38bdf8;
+                    background-color: rgba(225, 29, 72, 0.12);
+                    color: #fb7185;
                     font-size: 11px;
-                    border: 1px solid rgba(56, 189, 248, 0.35);
+                    border: 1px solid rgba(244, 63, 94, 0.35);
                     padding: 6px 8px;
                 }
                 QPushButton:hover {
-                    background-color: #0284c7;
+                    background-color: #e11d48;
                     color: #ffffff;
-                    border-color: #38bdf8;
+                    border-color: #f43f5e;
                 }
                 QPushButton:pressed {
-                    background-color: #0369a1;
+                    background-color: #be123c;
                 }
             """)
             btn.clicked.connect(lambda chk=False, m=minutes: self._on_snooze_selected(m))
@@ -296,13 +297,13 @@ class SpideyWaterBuddyPopup(QWidget):
         self.spidey.set_state(SpideyWidget.STATE_HAPPY)
         self.dialogue_label.setText("Thwip! Super hydrated! Spider-sense at 100%! 🌟")
         self.dialogue_label.setStyleSheet("""
-            color: #38bdf8;
+            color: #34d399;
             font-size: 12.5px;
             font-weight: 700;
             padding: 8px 10px;
-            background-color: rgba(2, 132, 199, 0.2);
+            background-color: rgba(16, 185, 129, 0.18);
             border-radius: 10px;
-            border: 1px solid #38bdf8;
+            border: 1px solid #10b981;
         """)
 
         self.btn_yes.setEnabled(False)

@@ -63,18 +63,18 @@ class DashboardWindow(QWidget):
         # Top Banner
         banner = QHBoxLayout()
         logo_lbl = QLabel("🕷️ SPIDER-MAN WATER BUDDY")
-        logo_lbl.setStyleSheet("font-size: 15px; font-weight: 900; color: #38bdf8; letter-spacing: 1.5px;")
+        logo_lbl.setStyleSheet(f"font-size: 15px; font-weight: 900; color: {TOKENS.ACCENT_RED}; letter-spacing: 1.5px;")
         banner.addWidget(logo_lbl)
         banner.addStretch()
 
         self.btn_remind_now_top = QPushButton("💧 Remind Me Now")
-        self.btn_remind_now_top.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #0284c7, stop: 1 #0369a1);
+        self.btn_remind_now_top.setStyleSheet(f"""
+            QPushButton {{
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {TOKENS.ACCENT_RED}, stop: 1 {TOKENS.ACCENT_RED_ACTIVE});
                 color: #ffffff;
-                border: 1px solid #38bdf8;
-            }
-            QPushButton:hover { background: #38bdf8; }
+                border: 1px solid {TOKENS.ACCENT_RED_HOVER};
+            }}
+            QPushButton:hover {{ background: {TOKENS.ACCENT_RED_HOVER}; }}
         """)
         self.btn_remind_now_top.clicked.connect(self._on_remind_now_clicked)
         banner.addWidget(self.btn_remind_now_top)
@@ -96,13 +96,13 @@ class DashboardWindow(QWidget):
         bottom_bar.addStretch()
 
         self.btn_apply = QPushButton("Apply & Save")
-        self.btn_apply.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #e11d48, stop: 1 #be123c);
+        self.btn_apply.setStyleSheet(f"""
+            QPushButton {{
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {TOKENS.ACCENT_RED}, stop: 1 {TOKENS.ACCENT_RED_ACTIVE});
                 color: #ffffff;
-                border: 1px solid #f43f5e;
-            }
-            QPushButton:hover { background: #f43f5e; }
+                border: 1px solid {TOKENS.ACCENT_RED_HOVER};
+            }}
+            QPushButton:hover {{ background: {TOKENS.ACCENT_RED_HOVER}; }}
         """)
         self.btn_apply.clicked.connect(self.save_and_apply)
         bottom_bar.addWidget(self.btn_apply)
@@ -140,7 +140,7 @@ class DashboardWindow(QWidget):
         time_right.addWidget(lbl_next)
 
         self.lbl_countdown = QLabel("--:--")
-        self.lbl_countdown.setStyleSheet("font-size: 20px; font-weight: 800; color: #38bdf8;")
+        self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER};")
         time_right.addWidget(self.lbl_countdown)
         sc_layout.addLayout(time_right)
 
@@ -158,7 +158,7 @@ class DashboardWindow(QWidget):
         hc_header.addWidget(hc_title)
         hc_header.addStretch()
         self.lbl_hydro_stats = QLabel("0 / 2000 ml (0%)")
-        self.lbl_hydro_stats.setStyleSheet("color: #38bdf8; font-weight: 700; font-size: 13px;")
+        self.lbl_hydro_stats.setStyleSheet(f"color: {TOKENS.ACCENT_RED_HOVER}; font-weight: 700; font-size: 13px;")
         hc_header.addWidget(self.lbl_hydro_stats)
         hc_layout.addLayout(hc_header)
 
@@ -181,12 +181,12 @@ class DashboardWindow(QWidget):
         log_box.addStretch()
 
         btn_log_250 = QPushButton("+250 ml (Glass)")
-        btn_log_250.setStyleSheet("background-color: #261f3d; color: #38bdf8; border: 1px solid #3b315c;")
+        btn_log_250.setStyleSheet(f"background-color: #261726; color: {TOKENS.ACCENT_RED_HOVER}; border: 1px solid {TOKENS.ACCENT_RED};")
         btn_log_250.clicked.connect(lambda: self._quick_log_water(250))
         log_box.addWidget(btn_log_250)
 
         btn_log_500 = QPushButton("+500 ml (Bottle)")
-        btn_log_500.setStyleSheet("background-color: #261f3d; color: #38bdf8; border: 1px solid #3b315c;")
+        btn_log_500.setStyleSheet(f"background-color: #261726; color: {TOKENS.ACCENT_RED_HOVER}; border: 1px solid {TOKENS.ACCENT_RED};")
         btn_log_500.clicked.connect(lambda: self._quick_log_water(500))
         log_box.addWidget(btn_log_500)
 
@@ -252,7 +252,7 @@ class DashboardWindow(QWidget):
         bak_layout = QHBoxLayout()
 
         btn_restore_bak = QPushButton("Restore Backup Settings")
-        btn_restore_bak.setStyleSheet("background-color: #241c38; color: #38bdf8; border: 1px solid #3c2f5a;")
+        btn_restore_bak.setStyleSheet(f"background-color: {TOKENS.BG_CARD_HOVER}; color: {TOKENS.TEXT_PRIMARY}; border: 1px solid {TOKENS.BORDER_DEFAULT};")
         btn_restore_bak.clicked.connect(self._restore_backup)
         bak_layout.addWidget(btn_restore_bak)
 
@@ -425,9 +425,9 @@ class DashboardWindow(QWidget):
 
     def _create_card(self, title: str):
         card = QFrame()
-        card.setStyleSheet("background-color: #1a152b; border: 1px solid #31284a; border-radius: 12px; padding: 12px;")
+        card.setStyleSheet(f"background-color: {TOKENS.BG_CARD}; border: 1px solid {TOKENS.BORDER_DEFAULT}; border-radius: {TOKENS.RADIUS_LG}; padding: 12px;")
         lbl = QLabel(title)
-        lbl.setStyleSheet("font-size: 13.5px; font-weight: 800; color: #38bdf8; margin-bottom: 4px;")
+        lbl.setStyleSheet(f"font-size: 13.5px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER}; margin-bottom: 4px;")
         layout = QVBoxLayout(card)
         layout.setContentsMargins(14, 12, 14, 14)
         layout.setSpacing(10)
@@ -442,29 +442,29 @@ class DashboardWindow(QWidget):
     def _on_timer_tick(self, seconds: int):
         if seconds < 0 or self.settings.reminders_paused or not self.settings.reminders_enabled:
             self.lbl_countdown.setText("Paused")
-            self.lbl_countdown.setStyleSheet("font-size: 20px; font-weight: 800; color: #facc15;")
+            self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TOKENS.STATUS_WARNING};")
         elif seconds == 0:
             self.lbl_countdown.setText("DUE NOW!")
-            self.lbl_countdown.setStyleSheet("font-size: 20px; font-weight: 800; color: #f43f5e;")
+            self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER};")
         else:
             mins, secs = divmod(seconds, 60)
             self.lbl_countdown.setText(f"{mins:02d}:{secs:02d}")
-            self.lbl_countdown.setStyleSheet("font-size: 20px; font-weight: 800; color: #38bdf8;")
+            self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER};")
 
     def _on_state_changed(self, state: ReminderState):
         if state == ReminderState.PAUSED:
             self.lbl_companion_status.setText("⏸️ PAUSED")
-            self.lbl_companion_status.setStyleSheet("font-size: 18px; font-weight: 800; color: #facc15;")
+            self.lbl_companion_status.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {TOKENS.STATUS_WARNING};")
             self.btn_pause_toggle.setText("▶️ Resume Reminders")
         elif state == ReminderState.QUIET_HOURS:
             self.lbl_companion_status.setText("🌙 QUIET HOURS")
-            self.lbl_companion_status.setStyleSheet("font-size: 18px; font-weight: 800; color: #94a3b8;")
+            self.lbl_companion_status.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {TOKENS.TEXT_MUTED};")
         elif state == ReminderState.WAITING_FOR_RESPONSE:
             self.lbl_companion_status.setText("💧 REMINDER ACTIVE")
-            self.lbl_companion_status.setStyleSheet("font-size: 18px; font-weight: 800; color: #38bdf8;")
+            self.lbl_companion_status.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER};")
         else:
             self.lbl_companion_status.setText("🟢 ACTIVE")
-            self.lbl_companion_status.setStyleSheet("font-size: 18px; font-weight: 800; color: #34d399;")
+            self.lbl_companion_status.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {TOKENS.STATUS_SUCCESS};")
             self.btn_pause_toggle.setText("⏸️ Pause Reminders")
 
     def _on_stats_updated(self, count: int, ml: int):

@@ -53,7 +53,7 @@ class SetupWizardDialog(QDialog):
         # Header Title Banner
         header = QHBoxLayout()
         header_title = QLabel("🕷️ SPIDER-MAN WATER BUDDY SETUP")
-        header_title.setStyleSheet("color: #38bdf8; font-size: 14px; font-weight: 800; letter-spacing: 1.5px;")
+        header_title.setStyleSheet(f"color: {TOKENS.ACCENT_RED_HOVER}; font-size: 14px; font-weight: 800; letter-spacing: 1.5px;")
         header.addWidget(header_title)
         header.addStretch()
         self.step_label = QLabel("Step 1 of 4")
@@ -293,17 +293,17 @@ class SetupWizardDialog(QDialog):
         vbox.addWidget(desc)
 
         self.summary_box = QFrame()
-        self.summary_box.setStyleSheet("""
-            QFrame {
-                background-color: #1a1626;
-                border: 1.5px solid #38bdf8;
-                border-radius: 12px;
+        self.summary_box.setStyleSheet(f"""
+            QFrame {{
+                background-color: {TOKENS.BG_CARD};
+                border: 1.5px solid {TOKENS.ACCENT_RED};
+                border-radius: {TOKENS.RADIUS_LG};
                 padding: 12px;
-            }
-            QLabel {
+            }}
+            QLabel {{
                 font-size: 12.5px;
-                color: #e2e8f0;
-            }
+                color: {TOKENS.TEXT_PRIMARY};
+            }}
         """)
         self.summary_layout = QVBoxLayout(self.summary_box)
         self.summary_layout.setSpacing(6)
@@ -363,13 +363,13 @@ class SetupWizardDialog(QDialog):
             if idx + 1 == self.stack.count() - 1:
                 self._update_summary()
                 self.btn_next.setText("Finish & Save ✨")
-                self.btn_next.setStyleSheet("""
-                    QPushButton {
-                        background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #0284c7, stop: 1 #0369a1);
+                self.btn_next.setStyleSheet(f"""
+                    QPushButton {{
+                        background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {TOKENS.ACCENT_RED}, stop: 1 {TOKENS.ACCENT_RED_ACTIVE});
                         color: #ffffff;
-                        border: 1px solid #38bdf8;
-                    }
-                    QPushButton:hover { background: #38bdf8; }
+                        border: 1px solid {TOKENS.ACCENT_RED_HOVER};
+                    }}
+                    QPushButton:hover {{ background: {TOKENS.ACCENT_RED_HOVER}; }}
                 """)
         else:
             self._save_and_finish()

@@ -1,45 +1,45 @@
 """
 Design Tokens and Centralized QSS Theme Engine for Spider-Man Water Buddy.
-Implements Tailwind-inspired design tokens adapted specifically for Qt/PySide6.
+Implements an authentic Spider-Man Crimson Red & Midnight Obsidian aesthetic.
+No unwanted blue accents — vibrant scarlet, ruby, and charcoal styling throughout.
 """
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class ThemeTokens:
-    # Background Colors
-    BG_BASE: str = "#0b0914"       # Deepest midnight canvas
-    BG_SURFACE: str = "#130f24"    # Primary window & tab surface
-    BG_CARD: str = "#1c1633"       # Raised card & container background
-    BG_CARD_HOVER: str = "#241d40" # Hover state on cards
-    BG_INPUT: str = "#18132c"      # Inputs, text edits, dropdowns
-    BG_OVERLAY: str = "rgba(18, 14, 34, 0.96)"  # Companion floating card
+    # Background Colors (Deep Midnight Obsidian)
+    BG_BASE: str = "#0c0a12"       # Deepest canvas
+    BG_SURFACE: str = "#140f1e"    # Window & tab surface
+    BG_CARD: str = "#1c152a"       # Raised card & container background
+    BG_CARD_HOVER: str = "#261d38" # Hover state on cards
+    BG_INPUT: str = "#181224"      # Inputs, text edits, dropdowns
+    BG_OVERLAY: str = "rgba(18, 14, 26, 0.97)"  # Companion floating card
 
-    # Brand & Accent Colors
-    ACCENT_RED: str = "#e11d48"    # Spidey crimson red
-    ACCENT_RED_HOVER: str = "#f43f5e"
-    ACCENT_RED_ACTIVE: str = "#be123c"
-    ACCENT_BLUE: str = "#0284c7"   # Web-slinger electric cyan/blue
-    ACCENT_BLUE_HOVER: str = "#38bdf8"
-    ACCENT_BLUE_ACTIVE: str = "#0369a1"
+    # Authentic Spider-Man Crimson & Ruby Accents
+    ACCENT_RED: str = "#e11d48"        # Spidey vibrant crimson red
+    ACCENT_RED_HOVER: str = "#f43f5e"  # Glowing scarlet
+    ACCENT_RED_ACTIVE: str = "#be123c" # Deep crimson
+    ACCENT_RUBY: str = "#fb7185"       # Soft ruby highlight
+    ACCENT_GOLD: str = "#f59e0b"       # Web gold for reminders & alerts
 
     # Status Colors
-    STATUS_SUCCESS: str = "#34d399" # Hydrated green
-    STATUS_WARNING: str = "#facc15" # Snooze amber
-    STATUS_ERROR: str = "#f87171"   # Missed/Declined red
-    STATUS_INFO: str = "#38bdf8"    # Info cyan
+    STATUS_SUCCESS: str = "#10b981" # Fresh hydrated emerald
+    STATUS_WARNING: str = "#f59e0b" # Snooze web gold
+    STATUS_ERROR: str = "#ef4444"   # Missed / declined red
+    STATUS_INFO: str = "#f43f5e"    # Info crimson
 
     # Text Colors
-    TEXT_PRIMARY: str = "#f8fafc"   # High contrast header and primary text
-    TEXT_SECONDARY: str = "#cbd5e1" # Body text
-    TEXT_MUTED: str = "#94a3b8"     # Subtitles, captions, hints
-    TEXT_SUBTLE: str = "#64748b"    # Disabled or placeholder text
+    TEXT_PRIMARY: str = "#f8fafc"   # Crisp white for headings
+    TEXT_SECONDARY: str = "#e2e8f0" # High-contrast light gray for body
+    TEXT_MUTED: str = "#a1a1aa"     # Neutral muted gray
+    TEXT_SUBTLE: str = "#71717a"    # Disabled or placeholder text
 
     # Borders & Dividers
-    BORDER_DEFAULT: str = "#2d2448" # Subtle structural border
-    BORDER_SUBTLE: str = "#221b38"  # Card dividers
-    BORDER_FOCUS: str = "#38bdf8"   # Input focus halo
-    BORDER_RED: str = "#f43f5e"     # Accent highlight border
+    BORDER_DEFAULT: str = "#2e2136" # Structural border
+    BORDER_SUBTLE: str = "#24182b"  # Card dividers
+    BORDER_FOCUS: str = "#f43f5e"   # Red focus halo (NO BLUE)
+    BORDER_RED: str = "#e11d48"     # Accent highlight border
 
     # Radii
     RADIUS_SM: str = "6px"
@@ -83,8 +83,8 @@ def get_dashboard_qss() -> str:
         }}
         QTabBar::tab:selected {{
             background: {TOKENS.BG_SURFACE};
-            color: {TOKENS.ACCENT_BLUE_HOVER};
-            border-color: {TOKENS.ACCENT_BLUE_HOVER};
+            color: {TOKENS.ACCENT_RED_HOVER};
+            border-color: {TOKENS.ACCENT_RED_HOVER};
         }}
         QTabBar::tab:hover {{
             color: {TOKENS.TEXT_PRIMARY};
@@ -115,8 +115,8 @@ def get_dashboard_qss() -> str:
             background-color: {TOKENS.BG_INPUT};
         }}
         QCheckBox::indicator:checked {{
-            background-color: {TOKENS.ACCENT_BLUE};
-            border-color: {TOKENS.ACCENT_BLUE_HOVER};
+            background-color: {TOKENS.ACCENT_RED};
+            border-color: {TOKENS.ACCENT_RED_HOVER};
         }}
         QPushButton {{
             font-weight: 700;
@@ -133,7 +133,7 @@ def get_dashboard_qss() -> str:
             font-weight: 700;
         }}
         QProgressBar::chunk {{
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 {TOKENS.ACCENT_BLUE}, stop: 1 {TOKENS.ACCENT_BLUE_HOVER});
+            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 {TOKENS.ACCENT_RED_ACTIVE}, stop: 1 {TOKENS.ACCENT_RED_HOVER});
             border-radius: {TOKENS.RADIUS_SM};
         }}
         QScrollBar:vertical {{
@@ -148,7 +148,7 @@ def get_dashboard_qss() -> str:
             min-height: 24px;
         }}
         QScrollBar::handle:vertical:hover {{
-            background: {TOKENS.ACCENT_BLUE_HOVER};
+            background: {TOKENS.ACCENT_RED_HOVER};
         }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
             height: 0px;
@@ -162,8 +162,8 @@ def get_companion_card_qss() -> str:
         #spideyCard {{
             background: qlineargradient(
                 x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(22, 17, 36, 0.96),
-                stop: 1 rgba(13, 10, 22, 0.98)
+                stop: 0 rgba(22, 16, 30, 0.97),
+                stop: 1 rgba(14, 10, 18, 0.99)
             );
             border: 1.5px solid {TOKENS.ACCENT_RED};
             border-radius: {TOKENS.RADIUS_XL};
@@ -187,7 +187,7 @@ def get_tray_menu_qss() -> str:
         QMenu {{
             background-color: {TOKENS.BG_CARD};
             color: {TOKENS.TEXT_PRIMARY};
-            border: 1px solid {TOKENS.BORDER_FOCUS};
+            border: 1px solid {TOKENS.ACCENT_RED};
             border-radius: {TOKENS.RADIUS_MD};
             padding: 6px;
             font-family: {TOKENS.FONT_FAMILY};
@@ -197,7 +197,7 @@ def get_tray_menu_qss() -> str:
             border-radius: {TOKENS.RADIUS_SM};
         }}
         QMenu::item:selected {{
-            background-color: {TOKENS.ACCENT_BLUE};
+            background-color: {TOKENS.ACCENT_RED};
             color: #ffffff;
         }}
         QMenu::separator {{
@@ -209,7 +209,7 @@ def get_tray_menu_qss() -> str:
 
 
 def get_dialog_qss() -> str:
-    """Returns general modal dialog styling for wizard and installers."""
+    """Returns general modal dialog styling for wizard and installers with pure Crimson Red theme."""
     return f"""
         QDialog {{
             background-color: {TOKENS.BG_BASE};
@@ -235,6 +235,10 @@ def get_dialog_qss() -> str:
             font-size: 13px;
             spacing: 8px;
         }}
+        QRadioButton::indicator:checked, QCheckBox::indicator:checked {{
+            background-color: {TOKENS.ACCENT_RED};
+            border: 1.5px solid {TOKENS.ACCENT_RED_HOVER};
+        }}
         QPushButton {{
             font-weight: 700;
             border-radius: {TOKENS.RADIUS_MD};
@@ -250,7 +254,7 @@ def get_dialog_qss() -> str:
             font-weight: 700;
         }}
         QProgressBar::chunk {{
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 {TOKENS.ACCENT_BLUE}, stop: 1 {TOKENS.ACCENT_BLUE_HOVER});
+            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 {TOKENS.ACCENT_RED_ACTIVE}, stop: 1 {TOKENS.ACCENT_RED_HOVER});
             border-radius: {TOKENS.RADIUS_SM};
         }}
     """

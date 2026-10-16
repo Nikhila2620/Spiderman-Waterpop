@@ -10,6 +10,7 @@ import zipfile
 import subprocess
 import winreg
 from pathlib import Path
+import time
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
@@ -25,6 +26,8 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QMessageBox,
 )
+
+from src.theme import get_dialog_qss, TOKENS
 
 APP_NAME = "Spider-Man Water Buddy"
 VERSION = "1.0.0"
@@ -59,6 +62,16 @@ class InstallWorker(QThread):
 
     def run(self):
         try:
+            self.progressUpdated.emit(5, "Closing running instances of Spider-Man Water Buddy...")
+            # Terminate running instance so executable can be cleanly overwritten
+            if sys.platform == "win32":
+                subprocess.run(
+                    ["taskkill", "/f", "/im", "SpiderManWaterBuddy.exe"],
+                    capture_output=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
+                time.sleep(0.5)
+
             self.progressUpdated.emit(10, "Preparing installation directory...")
             self.target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -96,7 +109,24 @@ class InstallWorker(QThread):
 
                     total_files = len(names)
                     for idx, name in enumerate(names):
-                        zf.extract(name, self.target_dir)
+                        extracted = False
+                        for attempt in range(3):
+                            try:
+                                zf.extract(name, self.target_dir)
+                                extracted = True
+                                break
+                            except PermissionError:
+                                if sys.platform == "win32":
+                                    subprocess.run(
+                                        ["taskkill", "/f", "/im", "SpiderManWaterBuddy.exe"],
+                                        capture_output=True,
+                                        creationflags=subprocess.CREATE_NO_WINDOW,
+                                    )
+                                time.sleep(0.6)
+
+                        if not extracted:
+                            zf.extract(name, self.target_dir)
+
                         pct = 25 + int((idx / total_files) * 50)
                         self.progressUpdated.emit(pct, f"Installing {Path(name).name}...")
             elif source_dir.exists():
@@ -157,41 +187,7 @@ class InstallerWindow(QDialog):
         super().__init__(parent)
         self.setWindowTitle(f"{APP_NAME} — Setup Wizard")
         self.setFixedSize(520, 380)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #12101a;
-                color: #f8fafc;
-                font-family: 'Segoe UI', -apple-system, sans-serif;
-            }
-            QLabel { color: #f1f5f9; }
-            QLineEdit {
-                background-color: #1e1a2e;
-                color: #ffffff;
-                border: 1.5px solid #3f395b;
-                border-radius: 8px;
-                padding: 6px 10px;
-                font-size: 13px;
-            }
-            QCheckBox { color: #cbd5e1; font-size: 13px; spacing: 8px; }
-            QPushButton {
-                font-weight: 700;
-                border-radius: 8px;
-                padding: 8px 16px;
-                font-size: 13px;
-            }
-            QProgressBar {
-                background-color: #1b162a;
-                border: 1px solid #362d52;
-                border-radius: 8px;
-                text-align: center;
-                color: #ffffff;
-                font-weight: 700;
-            }
-            QProgressBar::chunk {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #0284c7, stop: 1 #38bdf8);
-                border-radius: 7px;
-            }
-        """)
+        self.setStyleSheet(get_dialog_qss())
 
         local_app = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local")))
         self.default_install_dir = local_app / "Programs" / "SpiderManWaterBuddy"
@@ -203,11 +199,11 @@ class InstallerWindow(QDialog):
         layout.setSpacing(14)
 
         title = QLabel(f"🕷️ Install {APP_NAME}")
-        title.setStyleSheet("font-size: 18px; font-weight: 900; color: #38bdf8;")
+        title.setStyleSheet(f"font-size: 19px; font-weight: 900; color: {TOKENS.ACCENT_RED};")
         layout.addWidget(title)
 
         desc = QLabel("Install your friendly neighbourhood desktop companion.")
-        desc.setStyleSheet("color: #94a3b8; font-size: 13px;")
+        desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 13px;")
         layout.addWidget(desc)
 
         # Destination Folder
@@ -217,7 +213,7 @@ class InstallerWindow(QDialog):
         path_box.addWidget(self.edit_path)
 
         btn_browse = QPushButton("Browse...")
-        btn_browse.setStyleSheet("background-color: #27223b; color: #cbd5e1; border: 1px solid #41385f;")
+        btn_browse.setStyleSheet(f"background-color: {TOKENS.BG_CARD}; color: {TOKENS.TEXT_SECONDARY}; border: 1px solid {TOKENS.BORDER_DEFAULT};")
         btn_browse.clicked.connect(self._browse_dir)
         path_box.addWidget(btn_browse)
         layout.addLayout(path_box)
@@ -242,7 +238,7 @@ class InstallerWindow(QDialog):
         layout.addWidget(self.progress)
 
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet("color: #38bdf8; font-size: 12px;")
+        self.status_label.setStyleSheet(f"color: {TOKENS.ACCENT_RED_HOVER}; font-size: 12px; font-weight: 600;")
         layout.addWidget(self.status_label)
 
         layout.addStretch()
@@ -250,20 +246,20 @@ class InstallerWindow(QDialog):
         # Action Buttons
         btn_box = QHBoxLayout()
         self.btn_cancel = QPushButton("Cancel")
-        self.btn_cancel.setStyleSheet("background-color: #27223b; color: #cbd5e1; border: 1px solid #41385f;")
+        self.btn_cancel.setStyleSheet(f"background-color: {TOKENS.BG_CARD}; color: {TOKENS.TEXT_SECONDARY}; border: 1px solid {TOKENS.BORDER_DEFAULT};")
         self.btn_cancel.clicked.connect(self.reject)
         btn_box.addWidget(self.btn_cancel)
 
         btn_box.addStretch()
 
         self.btn_install = QPushButton("Install Now ⚡")
-        self.btn_install.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #0284c7, stop: 1 #0369a1);
+        self.btn_install.setStyleSheet(f"""
+            QPushButton {{
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {TOKENS.ACCENT_RED}, stop: 1 {TOKENS.ACCENT_RED_ACTIVE});
                 color: #ffffff;
-                border: 1px solid #38bdf8;
-            }
-            QPushButton:hover { background: #38bdf8; }
+                border: 1px solid {TOKENS.ACCENT_RED_HOVER};
+            }}
+            QPushButton:hover {{ background: {TOKENS.ACCENT_RED_HOVER}; }}
         """)
         self.btn_install.clicked.connect(self._start_install)
         btn_box.addWidget(self.btn_install)

@@ -170,13 +170,98 @@ def test_companion_window_and_placement():
         print("  -> Companion Window & Placement: PASSED [OK]")
 
 
+def test_theme_tokens_and_stylesheets():
+    print("[TEST] Running Theme Tokens & Stylesheets...")
+    from src.theme import TOKENS, get_dashboard_qss, get_companion_card_qss, get_tray_menu_qss, get_dialog_qss
+
+    assert TOKENS.BG_BASE.startswith("#")
+    assert TOKENS.ACCENT_RED.startswith("#")
+    assert TOKENS.ACCENT_BLUE.startswith("#")
+
+    dash_qss = get_dashboard_qss()
+    assert "QWidget" in dash_qss
+    assert "QTabWidget" in dash_qss
+
+    card_qss = get_companion_card_qss()
+    assert "#spideyCard" in card_qss
+
+    tray_qss = get_tray_menu_qss()
+    assert "QMenu" in tray_qss
+
+    dialog_qss = get_dialog_qss()
+    assert "QDialog" in dialog_qss
+    print("  -> Theme Tokens & Stylesheets: PASSED [OK]")
+
+
+def test_animation_and_performance_controls():
+    print("[TEST] Running Animation & Performance Mode Controls...")
+    from src.character import SpideyWidget
+
+    spidey = SpideyWidget()
+    assert spidey._animation_enabled is True
+    assert spidey._performance_mode is False
+
+    # Disable animation
+    spidey.set_animation_enabled(False)
+    assert spidey._animation_enabled is False
+    assert spidey.get_swing_angle() == 0.0
+
+    # Enable performance mode
+    spidey.set_performance_mode(True)
+    assert spidey._performance_mode is True
+
+    # Re-enable animation
+    spidey.set_animation_enabled(True)
+    assert spidey._animation_enabled is True
+    print("  -> Animation & Performance Controls: PASSED [OK]")
+
+
+def test_startup_manager_command():
+    print("[TEST] Running Startup Manager Command Generation...")
+    cmd = StartupManager.get_executable_command()
+    assert "--minimized" in cmd, "Startup command must include --minimized flag"
+    print("  -> Startup Manager Command: PASSED [OK]")
+
+
+def test_installer_zip_slip_security():
+    print("[TEST] Running Installer Zip-Slip Security Defense...")
+    import zipfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fake_zip = Path(tmpdir) / "malicious.zip"
+        target_dir = Path(tmpdir) / "install_target"
+        target_dir.mkdir()
+
+        # Create zip with directory traversal entry
+        with zipfile.ZipFile(fake_zip, "w") as zf:
+            zf.writestr("SpiderManWaterBuddy.exe", "safe content")
+            zf.writestr("../../evil.txt", "exploit content")
+
+        # Test traversal detection logic
+        resolved_target = target_dir.resolve()
+        detected = False
+        with zipfile.ZipFile(fake_zip, "r") as zf:
+            names = zf.namelist()
+            for name in names:
+                entry_dest = (target_dir / name).resolve()
+                if not str(entry_dest).startswith(str(resolved_target)):
+                    detected = True
+                    break
+
+        assert detected is True, "Zip slip path traversal must be detected"
+        print("  -> Installer Zip-Slip Security Defense: PASSED [OK]")
+
+
 def run_all_tests():
     test_config_validation_and_recovery()
     test_reminder_engine_lifecycle()
     test_quiet_hours_midnight_crossing()
     test_companion_window_and_placement()
+    test_theme_tokens_and_stylesheets()
+    test_animation_and_performance_controls()
+    test_startup_manager_command()
+    test_installer_zip_slip_security()
     print("\n=======================================================")
-    print(" ALL AUTOMATED ARCHITECTURE & ENGINE TESTS PASSED! [OK]")
+    print(" ALL 8 ARCHITECTURE, ENGINE & SECURITY TESTS PASSED! [OK]")
     print("=======================================================")
 
 

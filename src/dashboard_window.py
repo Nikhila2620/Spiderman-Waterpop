@@ -1,15 +1,17 @@
 """
 Settings & Hydration Dashboard Window for Spider-Man Water Buddy.
-Provides comprehensive graphical configuration across General, Reminders, Appearance,
-and real-time Daily Hydration tracking.
+Implements a premium Aquatic Liquid Glass user interface with custom left navigation sidebar,
+animated liquid reservoir widget, translucent glass cards, and real-time hydration telemetry.
 """
 from datetime import datetime
+from pathlib import Path
+import os
 from PySide6.QtCore import Qt, QTime, Signal
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QTabWidget,
+    QStackedWidget,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -21,6 +23,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QScrollArea,
     QMessageBox,
+    QButtonGroup,
 )
 from PySide6.QtGui import QFont, QCursor, QColor
 
@@ -28,11 +31,13 @@ from src.config import ConfigManager, AppSettings
 from src.startup_manager import StartupManager
 from src.reminder_engine import ReminderEngine, ReminderState
 from src.theme import get_dashboard_qss, TOKENS
+from src.components.glass_card import GlassCard
+from src.components.liquid_reservoir import LiquidReservoirWidget
 
 
 class DashboardWindow(QWidget):
     """
-    Comprehensive graphical dashboard and settings window.
+    Comprehensive graphical dashboard and settings window styled in Aquatic Liquid Glass.
     """
 
     settingsChanged = Signal()
@@ -45,9 +50,10 @@ class DashboardWindow(QWidget):
         self.settings = config_manager.settings
         self.engine = reminder_engine
 
-        self.setWindowTitle("Spider-Man Water Buddy — Dashboard & Settings")
-        self.setMinimumSize(640, 580)
-        self.resize(680, 620)
+        self.setObjectName("mainDashboard")
+        self.setWindowTitle("Spider-Man Water Buddy — Aquatic Dashboard & Settings")
+        self.setMinimumSize(820, 640)
+        self.resize(880, 680)
 
         self._init_ui()
         self._connect_engine_signals()
@@ -56,163 +62,243 @@ class DashboardWindow(QWidget):
     def _init_ui(self):
         self.setStyleSheet(get_dashboard_qss())
 
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 16, 20, 16)
-        main_layout.setSpacing(12)
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
 
-        # Top Banner
-        banner = QHBoxLayout()
-        logo_lbl = QLabel("🕷️ SPIDER-MAN WATER BUDDY")
-        logo_lbl.setStyleSheet(f"font-size: 15px; font-weight: 900; color: {TOKENS.ACCENT_RED}; letter-spacing: 1.5px;")
-        banner.addWidget(logo_lbl)
-        banner.addStretch()
+        # 1. Sleek Top Header Bar
+        top_bar = QFrame()
+        top_bar.setStyleSheet(f"""
+            QFrame {{
+                background-color: rgba(7, 17, 30, 0.95);
+                border-bottom: 1px solid {TOKENS.BORDER_GLASS};
+                padding: 10px 20px;
+            }}
+        """)
+        top_layout = QHBoxLayout(top_bar)
+        top_layout.setContentsMargins(18, 12, 18, 12)
+        top_layout.setSpacing(14)
+
+        logo_title = QLabel("🕸️ SPIDER-MAN WATER BUDDY")
+        logo_title.setStyleSheet(f"""
+            font-size: 15px;
+            font-weight: 900;
+            color: {TOKENS.ACCENT_AQUA};
+            letter-spacing: 1.5px;
+        """)
+        top_layout.addWidget(logo_title)
+
+        subtitle_badge = QLabel("AQUATIC LIQUID GLASS")
+        subtitle_badge.setStyleSheet(f"""
+            font-size: 10px;
+            font-weight: 800;
+            color: {TOKENS.TEXT_MUTED};
+            background-color: rgba(0, 240, 255, 0.08);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 4px;
+            padding: 3px 6px;
+        """)
+        top_layout.addWidget(subtitle_badge)
+        top_layout.addStretch()
 
         self.btn_remind_now_top = QPushButton("💧 Remind Me Now")
-        self.btn_remind_now_top.setStyleSheet(f"""
-            QPushButton {{
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {TOKENS.ACCENT_RED}, stop: 1 {TOKENS.ACCENT_RED_ACTIVE});
-                color: #ffffff;
-                border: 1px solid {TOKENS.ACCENT_RED_HOVER};
-            }}
-            QPushButton:hover {{ background: {TOKENS.ACCENT_RED_HOVER}; }}
-        """)
+        self.btn_remind_now_top.setProperty("class", "primaryBtn")
+        self.btn_remind_now_top.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_remind_now_top.clicked.connect(self._on_remind_now_clicked)
-        banner.addWidget(self.btn_remind_now_top)
-        main_layout.addLayout(banner)
+        top_layout.addWidget(self.btn_remind_now_top)
 
-        # Tabs
-        self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_dashboard_tab(), "📊 Dashboard")
-        self.tabs.addTab(self._build_general_tab(), "⚙️ General")
-        self.tabs.addTab(self._build_reminders_tab(), "⏱️ Reminders")
-        self.tabs.addTab(self._build_appearance_tab(), "🎨 Appearance")
-        main_layout.addWidget(self.tabs)
+        root_layout.addWidget(top_bar)
 
-        # Bottom Save Bar
-        bottom_bar = QHBoxLayout()
-        self.status_save_label = QLabel("Settings up to date.")
-        self.status_save_label.setStyleSheet("color: #94a3b8; font-size: 12px;")
-        bottom_bar.addWidget(self.status_save_label)
-        bottom_bar.addStretch()
+        # 2. Main Body Split: Left Sidebar + Right Stacked Content
+        body_layout = QHBoxLayout()
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(0)
 
-        self.btn_apply = QPushButton("Apply & Save")
-        self.btn_apply.setStyleSheet(f"""
-            QPushButton {{
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {TOKENS.ACCENT_RED}, stop: 1 {TOKENS.ACCENT_RED_ACTIVE});
-                color: #ffffff;
-                border: 1px solid {TOKENS.ACCENT_RED_HOVER};
+        # Left Sidebar
+        sidebar = QWidget()
+        sidebar.setObjectName("sidebarContainer")
+        sidebar.setFixedWidth(200)
+        sidebar_layout = QVBoxLayout(sidebar)
+        sidebar_layout.setContentsMargins(12, 18, 12, 18)
+        sidebar_layout.setSpacing(6)
+
+        self.nav_buttons = []
+        nav_items = [
+            ("📊  Dashboard", 0),
+            ("⚙️  General", 1),
+            ("⏱️  Reminders", 2),
+            ("🎨  Appearance", 3),
+            ("🛠️  Advanced", 4),
+        ]
+
+        self.nav_group = QButtonGroup(self)
+        self.nav_group.setExclusive(True)
+
+        for text, index in nav_items:
+            btn = QPushButton(text)
+            btn.setProperty("class", "navBtn")
+            btn.setCheckable(True)
+            btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            if index == 0:
+                btn.setChecked(True)
+                btn.setProperty("selected", "true")
+            else:
+                btn.setProperty("selected", "false")
+            btn.clicked.connect(lambda chk=False, idx=index: self._switch_nav(idx))
+            self.nav_group.addButton(btn, index)
+            self.nav_buttons.append(btn)
+            sidebar_layout.addWidget(btn)
+
+        sidebar_layout.addStretch()
+        body_layout.addWidget(sidebar)
+
+        # Right Stacked Content Pages
+        self.stack = QStackedWidget()
+        self.stack.addWidget(self._build_dashboard_tab())
+        self.stack.addWidget(self._build_general_tab())
+        self.stack.addWidget(self._build_reminders_tab())
+        self.stack.addWidget(self._build_appearance_tab())
+        self.stack.addWidget(self._build_advanced_tab())
+        body_layout.addWidget(self.stack)
+
+        root_layout.addLayout(body_layout)
+
+        # 3. Bottom Save & Status Bar
+        bottom_bar = QFrame()
+        bottom_bar.setStyleSheet(f"""
+            QFrame {{
+                background-color: rgba(7, 17, 30, 0.95);
+                border-top: 1px solid {TOKENS.BORDER_GLASS};
+                padding: 10px 20px;
             }}
-            QPushButton:hover {{ background: {TOKENS.ACCENT_RED_HOVER}; }}
         """)
+        bottom_layout = QHBoxLayout(bottom_bar)
+        bottom_layout.setContentsMargins(18, 10, 18, 10)
+
+        self.status_save_label = QLabel("Settings up to date.")
+        self.status_save_label.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-size: 12px;")
+        bottom_layout.addWidget(self.status_save_label)
+        bottom_layout.addStretch()
+
+        self.btn_apply = QPushButton("Apply & Save ✨")
+        self.btn_apply.setProperty("class", "primaryBtn")
+        self.btn_apply.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_apply.clicked.connect(self.save_and_apply)
-        bottom_bar.addWidget(self.btn_apply)
+        bottom_layout.addWidget(self.btn_apply)
 
-        main_layout.addLayout(bottom_bar)
+        root_layout.addWidget(bottom_bar)
 
-    # TAB 1: Real-time Dashboard & Hydration Tracking
+    def _switch_nav(self, index: int):
+        self.stack.setCurrentIndex(index)
+        for i, btn in enumerate(self.nav_buttons):
+            is_active = (i == index)
+            btn.setProperty("selected", "true" if is_active else "false")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
+    # PAGE 1: Aquatic Dashboard & Liquid Reservoir
     def _build_dashboard_tab(self) -> QWidget:
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(24, 20, 24, 20)
         layout.setSpacing(16)
 
-        # Companion Status Badge Card
-        status_card = QFrame()
-        status_card.setStyleSheet("background-color: #1a152b; border: 1px solid #31284a; border-radius: 12px; padding: 14px;")
-        sc_layout = QHBoxLayout(status_card)
+        # 1. Top Telemetry Row: Status & Next Countdown
+        telemetry_row = QHBoxLayout()
+        telemetry_row.setSpacing(14)
 
-        status_left = QVBoxLayout()
-        self.lbl_companion_status_title = QLabel("Companion Status")
-        self.lbl_companion_status_title.setStyleSheet("color: #94a3b8; font-size: 12px; font-weight: 700;")
-        status_left.addWidget(self.lbl_companion_status_title)
-
+        card_status = GlassCard("Companion Status", "Current desktop presence")
+        cs_box = QHBoxLayout()
         self.lbl_companion_status = QLabel("🟢 ACTIVE")
-        self.lbl_companion_status.setStyleSheet("font-size: 18px; font-weight: 800; color: #34d399;")
-        status_left.addWidget(self.lbl_companion_status)
-        sc_layout.addLayout(status_left)
+        self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.STATUS_SUCCESS};")
+        cs_box.addWidget(self.lbl_companion_status)
+        card_status.content_layout.addLayout(cs_box)
+        telemetry_row.addWidget(card_status)
 
-        sc_layout.addStretch()
-
-        time_right = QVBoxLayout()
-        time_right.setAlignment(Qt.AlignmentFlag.AlignRight)
-        lbl_next = QLabel("Next Reminder In:")
-        lbl_next.setStyleSheet("color: #94a3b8; font-size: 12px; font-weight: 700;")
-        time_right.addWidget(lbl_next)
-
+        card_timer = GlassCard("Next Reminder", "Countdown to hydration prompt")
+        ct_box = QHBoxLayout()
         self.lbl_countdown = QLabel("--:--")
-        self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER};")
-        time_right.addWidget(self.lbl_countdown)
-        sc_layout.addLayout(time_right)
+        self.lbl_countdown.setStyleSheet(f"font-size: 24px; font-weight: 900; color: {TOKENS.ACCENT_AQUA};")
+        ct_box.addWidget(self.lbl_countdown)
+        card_timer.content_layout.addLayout(ct_box)
+        telemetry_row.addWidget(card_timer)
 
-        layout.addWidget(status_card)
+        layout.addLayout(telemetry_row)
 
-        # Daily Hydration Goal Card
-        hydro_card = QFrame()
-        hydro_card.setStyleSheet("background-color: #1a152b; border: 1px solid #31284a; border-radius: 12px; padding: 14px;")
-        hc_layout = QVBoxLayout(hydro_card)
-        hc_layout.setSpacing(10)
+        # 2. Main Fluid Hydration Reservoir Card
+        reservoir_card = GlassCard("Daily Hydration Reservoir", "Live simulated fluid dynamics and progress tracking")
+        res_layout = QVBoxLayout()
+        res_layout.setSpacing(14)
 
-        hc_header = QHBoxLayout()
-        hc_title = QLabel("Today's Hydration Progress")
-        hc_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #ffffff;")
-        hc_header.addWidget(hc_title)
-        hc_header.addStretch()
+        # Animated Liquid Reservoir Widget
+        self.reservoir_widget = LiquidReservoirWidget()
+        res_layout.addWidget(self.reservoir_widget, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Quick Log Buttons
+        quick_box = QHBoxLayout()
+        quick_box.setSpacing(12)
+
+        lbl_quick = QLabel("Quick Log:")
+        lbl_quick.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-weight: 700; font-size: 13px;")
+        quick_box.addWidget(lbl_quick)
+
+        self.btn_log_250 = QPushButton("💧 +250 ml (Glass)")
+        self.btn_log_250.setProperty("class", "secondaryBtn")
+        self.btn_log_250.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_log_250.clicked.connect(lambda: self._quick_log_water(250))
+        quick_box.addWidget(self.btn_log_250)
+
+        self.btn_log_500 = QPushButton("🌊 +500 ml (Bottle)")
+        self.btn_log_500.setProperty("class", "secondaryBtn")
+        self.btn_log_500.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_log_500.clicked.connect(lambda: self._quick_log_water(500))
+        quick_box.addWidget(self.btn_log_500)
+
+        quick_box.addStretch()
+        res_layout.addLayout(quick_box)
+
+        # Fallback hidden labels for compatibility
         self.lbl_hydro_stats = QLabel("0 / 2000 ml (0%)")
-        self.lbl_hydro_stats.setStyleSheet(f"color: {TOKENS.ACCENT_RED_HOVER}; font-weight: 700; font-size: 13px;")
-        hc_header.addWidget(self.lbl_hydro_stats)
-        hc_layout.addLayout(hc_header)
-
+        self.lbl_hydro_stats.setVisible(False)
         self.progress_hydro = QProgressBar()
-        self.progress_hydro.setFixedHeight(18)
-        self.progress_hydro.setValue(0)
-        hc_layout.addWidget(self.progress_hydro)
-
-        # Completed Reminders Counter
-        rem_count_box = QHBoxLayout()
+        self.progress_hydro.setVisible(False)
         self.lbl_reminders_completed = QLabel("Completed Reminders Today: 0")
-        self.lbl_reminders_completed.setStyleSheet("color: #cbd5e1; font-size: 13px; font-weight: 600;")
-        rem_count_box.addWidget(self.lbl_reminders_completed)
-        rem_count_box.addStretch()
-        hc_layout.addLayout(rem_count_box)
+        self.lbl_reminders_completed.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 12.5px; font-weight: 600;")
+        res_layout.addWidget(self.lbl_reminders_completed)
 
-        # Quick Log Water Buttons
-        log_box = QHBoxLayout()
-        log_box.addWidget(QLabel("Quick Log Water Intake:"))
-        log_box.addStretch()
+        reservoir_card.content_layout.addLayout(res_layout)
+        layout.addWidget(reservoir_card)
 
-        btn_log_250 = QPushButton("+250 ml (Glass)")
-        btn_log_250.setStyleSheet(f"background-color: #261726; color: {TOKENS.ACCENT_RED_HOVER}; border: 1px solid {TOKENS.ACCENT_RED};")
-        btn_log_250.clicked.connect(lambda: self._quick_log_water(250))
-        log_box.addWidget(btn_log_250)
-
-        btn_log_500 = QPushButton("+500 ml (Bottle)")
-        btn_log_500.setStyleSheet(f"background-color: #261726; color: {TOKENS.ACCENT_RED_HOVER}; border: 1px solid {TOKENS.ACCENT_RED};")
-        btn_log_500.clicked.connect(lambda: self._quick_log_water(500))
-        log_box.addWidget(btn_log_500)
-
-        hc_layout.addLayout(log_box)
-        layout.addWidget(hydro_card)
-
-        # Quick Control Actions
-        ctrl_card = QFrame()
-        ctrl_card.setStyleSheet("background-color: #1a152b; border: 1px solid #31284a; border-radius: 12px; padding: 14px;")
-        cc_layout = QHBoxLayout(ctrl_card)
+        # 3. Quick Action Controls Card
+        ctrl_card = GlassCard("Companion Quick Controls", "Pause or hide desktop overlay")
+        ctrl_layout = QHBoxLayout()
+        ctrl_layout.setSpacing(12)
 
         self.btn_pause_toggle = QPushButton("⏸️ Pause Reminders")
-        self.btn_pause_toggle.setStyleSheet("background-color: #2c2242; color: #facc15; border: 1px solid #524075;")
+        self.btn_pause_toggle.setProperty("class", "secondaryBtn")
+        self.btn_pause_toggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_pause_toggle.clicked.connect(self._on_toggle_pause_clicked)
-        cc_layout.addWidget(self.btn_pause_toggle)
+        ctrl_layout.addWidget(self.btn_pause_toggle)
 
         self.btn_visibility_toggle = QPushButton("👁️ Hide Companion")
-        self.btn_visibility_toggle.setStyleSheet("background-color: #2c2242; color: #cbd5e1; border: 1px solid #524075;")
+        self.btn_visibility_toggle.setProperty("class", "secondaryBtn")
+        self.btn_visibility_toggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_visibility_toggle.clicked.connect(self._on_toggle_visibility_clicked)
-        cc_layout.addWidget(self.btn_visibility_toggle)
+        ctrl_layout.addWidget(self.btn_visibility_toggle)
 
+        ctrl_layout.addStretch()
+        ctrl_card.content_layout.addLayout(ctrl_layout)
         layout.addWidget(ctrl_card)
-        layout.addStretch()
-        return widget
 
-    # TAB 2: General Settings
+        layout.addStretch()
+        scroll.setWidget(widget)
+        return scroll
+
+    # PAGE 2: General Settings
     def _build_general_tab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -220,54 +306,50 @@ class DashboardWindow(QWidget):
 
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(14)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
 
-        # Identity
-        id_card, id_vbox = self._create_card("Personalization")
-        id_vbox.addWidget(QLabel("Companion Name:"))
+        # Personalization
+        id_card = GlassCard("Personalization", "Custom greetings and companion identity")
+        id_card.content_layout.addWidget(QLabel("Companion Name:"))
         self.edit_comp_name = QLineEdit()
-        id_vbox.addWidget(self.edit_comp_name)
+        id_card.content_layout.addWidget(self.edit_comp_name)
 
-        id_vbox.addWidget(QLabel("Your Preferred Name:"))
+        id_card.content_layout.addWidget(QLabel("Your Preferred Name:"))
         self.edit_user_name = QLineEdit()
-        id_vbox.addWidget(self.edit_user_name)
+        id_card.content_layout.addWidget(self.edit_user_name)
         layout.addWidget(id_card)
 
+        # Daily Hydration Goal
+        goal_card = GlassCard("Hydration Target", "Daily target in milliliters (ml)")
+        goal_row = QHBoxLayout()
+        goal_row.addWidget(QLabel("Daily Goal (ml):"))
+        self.spin_daily_goal = QSpinBox()
+        self.spin_daily_goal.setRange(500, 10000)
+        self.spin_daily_goal.setSingleStep(250)
+        self.spin_daily_goal.setSuffix(" ml")
+        goal_row.addWidget(self.spin_daily_goal)
+        goal_row.addStretch()
+        goal_card.content_layout.addLayout(goal_row)
+        layout.addWidget(goal_card)
+
         # Windows Integration
-        win_card, win_vbox = self._create_card("Windows Integration & Behavior")
-
+        win_card = GlassCard("Windows Integration & System Behavior", "Configure startup and window layering")
         self.chk_startup = QCheckBox("Launch automatically when Windows starts")
-        win_vbox.addWidget(self.chk_startup)
+        win_card.content_layout.addWidget(self.chk_startup)
 
-        self.chk_start_minimized = QCheckBox("Start minimized to system tray")
-        win_vbox.addWidget(self.chk_start_minimized)
+        self.chk_start_minimized = QCheckBox("Start minimized in background tray")
+        win_card.content_layout.addWidget(self.chk_start_minimized)
 
         self.chk_always_on_top = QCheckBox("Keep companion Always-On-Top of other windows")
-        win_vbox.addWidget(self.chk_always_on_top)
+        win_card.content_layout.addWidget(self.chk_always_on_top)
         layout.addWidget(win_card)
-
-        # Backup & Recovery
-        bak_card, bak_vbox = self._create_card("Configuration Backup & Reset")
-        bak_layout = QHBoxLayout()
-
-        btn_restore_bak = QPushButton("Restore Backup Settings")
-        btn_restore_bak.setStyleSheet(f"background-color: {TOKENS.BG_CARD_HOVER}; color: {TOKENS.TEXT_PRIMARY}; border: 1px solid {TOKENS.BORDER_DEFAULT};")
-        btn_restore_bak.clicked.connect(self._restore_backup)
-        bak_layout.addWidget(btn_restore_bak)
-
-        btn_reset_defaults = QPushButton("Reset to Defaults")
-        btn_reset_defaults.setStyleSheet("background-color: #241c38; color: #f87171; border: 1px solid #5a2f3a;")
-        btn_reset_defaults.clicked.connect(self._reset_defaults)
-        bak_layout.addWidget(btn_reset_defaults)
-        bak_vbox.addLayout(bak_layout)
-        layout.addWidget(bak_card)
 
         layout.addStretch()
         scroll.setWidget(widget)
         return scroll
 
-    # TAB 3: Reminder Settings
+    # PAGE 3: Reminder Scheduling
     def _build_reminders_tab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -275,18 +357,16 @@ class DashboardWindow(QWidget):
 
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(14)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
 
-        # Intervals
-        sched_card, s_layout = self._create_card("Reminder Intervals")
-        s_layout.setSpacing(10)
-
-        self.chk_reminders_enabled = QCheckBox("Enable Water Reminders")
-        s_layout.addWidget(self.chk_reminders_enabled)
+        # Reminder Intervals
+        sched_card = GlassCard("Reminder Timing & Recurrence", "Intervals between prompts and snoozes")
+        self.chk_reminders_enabled = QCheckBox("Enable Automatic Water Reminders")
+        sched_card.content_layout.addWidget(self.chk_reminders_enabled)
 
         int_row = QHBoxLayout()
-        int_row.addWidget(QLabel("Recurring Reminder Interval:"))
+        int_row.addWidget(QLabel("Recurring Interval:"))
         self.combo_interval = QComboBox()
         self.combo_interval.addItems(["15 min", "30 min", "45 min", "60 min", "90 min", "Custom"])
         self.combo_interval.currentIndexChanged.connect(self._on_combo_interval_changed)
@@ -296,7 +376,8 @@ class DashboardWindow(QWidget):
         self.spin_interval_custom.setRange(1, 720)
         self.spin_interval_custom.setSuffix(" min")
         int_row.addWidget(self.spin_interval_custom)
-        s_layout.addLayout(int_row)
+        int_row.addStretch()
+        sched_card.content_layout.addLayout(int_row)
 
         snooze_row = QHBoxLayout()
         snooze_row.addWidget(QLabel("Snooze Duration:"))
@@ -310,14 +391,14 @@ class DashboardWindow(QWidget):
         self.spin_retry.setRange(1, 120)
         self.spin_retry.setSuffix(" min")
         snooze_row.addWidget(self.spin_retry)
-        s_layout.addLayout(snooze_row)
+        snooze_row.addStretch()
+        sched_card.content_layout.addLayout(snooze_row)
         layout.addWidget(sched_card)
 
         # Quiet Hours
-        quiet_card, q_layout = self._create_card("Quiet Hours (Do Not Disturb)")
-
+        quiet_card = GlassCard("Quiet Hours (Do Not Disturb)", "Prevent notifications during sleep or focus hours")
         self.chk_quiet = QCheckBox("Enable Quiet Hours")
-        q_layout.addWidget(self.chk_quiet)
+        quiet_card.content_layout.addWidget(self.chk_quiet)
 
         q_row = QHBoxLayout()
         q_row.addWidget(QLabel("From:"))
@@ -330,35 +411,14 @@ class DashboardWindow(QWidget):
         self.time_q_end.setDisplayFormat("HH:mm")
         q_row.addWidget(self.time_q_end)
         q_row.addStretch()
-        q_layout.addLayout(q_row)
+        quiet_card.content_layout.addLayout(q_row)
         layout.addWidget(quiet_card)
-
-        # Personalized Messages
-        msg_card, m_layout = self._create_card("Custom Messages (Use '[Name]' for your name)")
-
-        m_layout.addWidget(QLabel("Reminder Prompt Message:"))
-        self.edit_msg_prompt = QLineEdit()
-        m_layout.addWidget(self.edit_msg_prompt)
-
-        m_layout.addWidget(QLabel("Success Confirmation Message (YES):"))
-        self.edit_msg_yes = QLineEdit()
-        m_layout.addWidget(self.edit_msg_yes)
-
-        m_layout.addWidget(QLabel("Disappointment Message (NO):"))
-        self.edit_msg_no = QLineEdit()
-        m_layout.addWidget(self.edit_msg_no)
-
-        btn_restore_msgs = QPushButton("Restore Default Messages")
-        btn_restore_msgs.setStyleSheet("background-color: #241c38; color: #cbd5e1; border: 1px solid #3c2f5a;")
-        btn_restore_msgs.clicked.connect(self._restore_default_messages)
-        m_layout.addWidget(btn_restore_msgs)
-        layout.addWidget(msg_card)
 
         layout.addStretch()
         scroll.setWidget(widget)
         return scroll
 
-    # TAB 4: Appearance & Interaction
+    # PAGE 4: Appearance & Motion
     def _build_appearance_tab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -366,73 +426,157 @@ class DashboardWindow(QWidget):
 
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(14)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
 
         # Desktop Placement
-        pos_card, pos_vbox = self._create_card("Desktop Screen Placement")
+        pos_card = GlassCard("Desktop Screen Placement", "Corner anchoring for Spider-Man web hang")
         p_layout = QHBoxLayout()
         p_layout.addWidget(QLabel("Anchor Corner:"))
         self.combo_corner = QComboBox()
         self.combo_corner.addItems(["top-right", "top-left", "bottom-right", "bottom-left"])
         p_layout.addWidget(self.combo_corner)
         p_layout.addStretch()
-        pos_vbox.addLayout(p_layout)
+        pos_card.content_layout.addLayout(p_layout)
         layout.addWidget(pos_card)
 
-        # Interaction & Mouse Follow
-        act_card, a_layout = self._create_card("Interaction & Click-Through")
-
-        self.chk_click_through = QCheckBox("Enable Click-Through (Clicks pass through companion to background apps)")
-        a_layout.addWidget(self.chk_click_through)
+        # Interaction & Motion
+        act_card = GlassCard("Interaction, Motion & Physics", "Configure web swinging and hover awareness")
+        self.chk_click_through = QCheckBox("Enable Click-Through (Clicks pass through companion to apps below)")
+        act_card.content_layout.addWidget(self.chk_click_through)
 
         lbl_hint = QLabel("💡 Press 'Ctrl+Alt+W' or use the System Tray to toggle interaction mode anytime.")
-        lbl_hint.setStyleSheet("color: #94a3b8; font-size: 11.5px;")
-        a_layout.addWidget(lbl_hint)
+        lbl_hint.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 11.5px;")
+        act_card.content_layout.addWidget(lbl_hint)
 
-        self.chk_mouse_follow = QCheckBox("Mouse Awareness (Spider-Man reacts when pointer approaches)")
-        a_layout.addWidget(self.chk_mouse_follow)
+        self.chk_mouse_follow = QCheckBox("Spider-Sense Awareness (Reacts when pointer approaches)")
+        act_card.content_layout.addWidget(self.chk_mouse_follow)
 
-        self.chk_animation = QCheckBox("Enable Pendulum Web Swinging")
-        a_layout.addWidget(self.chk_animation)
+        self.chk_animation = QCheckBox("Enable Natural Pendulum Web Swinging")
+        act_card.content_layout.addWidget(self.chk_animation)
 
-        self.chk_perf_mode = QCheckBox("Performance Mode (Minimizes CPU/GPU load for battery saving)")
-        a_layout.addWidget(self.chk_perf_mode)
+        self.chk_perf_mode = QCheckBox("Performance Mode (Minimizes CPU/GPU draw on battery)")
+        act_card.content_layout.addWidget(self.chk_perf_mode)
 
-        self.chk_sound = QCheckBox("Sound Effects")
-        a_layout.addWidget(self.chk_sound)
+        self.chk_sound = QCheckBox("Play Audio Cues on Reminders")
+        act_card.content_layout.addWidget(self.chk_sound)
         layout.addWidget(act_card)
 
         # Animation Preview
-        anim_card, anim_vbox = self._create_card("Animation Previews")
+        anim_card = GlassCard("Animation & Reaction Previews", "Trigger character state reactions")
         an_layout = QHBoxLayout()
+        an_layout.setSpacing(12)
 
         btn_test_happy = QPushButton("🎉 Test Happy Celebration")
-        btn_test_happy.setStyleSheet("background-color: #241c38; color: #34d399; border: 1px solid #3c2f5a;")
+        btn_test_happy.setProperty("class", "secondaryBtn")
+        btn_test_happy.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn_test_happy.clicked.connect(lambda: self.testAnimationRequested.emit("happy"))
         an_layout.addWidget(btn_test_happy)
 
         btn_test_sad = QPushButton("🕷️ Test Disappointed Reaction")
-        btn_test_sad.setStyleSheet("background-color: #241c38; color: #f87171; border: 1px solid #3c2f5a;")
+        btn_test_sad.setProperty("class", "secondaryBtn")
+        btn_test_sad.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn_test_sad.clicked.connect(lambda: self.testAnimationRequested.emit("disappointed"))
         an_layout.addWidget(btn_test_sad)
-        anim_vbox.addLayout(an_layout)
+        an_layout.addStretch()
+
+        anim_card.content_layout.addLayout(an_layout)
         layout.addWidget(anim_card)
+
+        # Custom Messages
+        msg_card = GlassCard("Custom Dialogue Messages", "Use '[Name]' to dynamically insert your name")
+        msg_card.content_layout.addWidget(QLabel("Reminder Prompt:"))
+        self.edit_msg_prompt = QLineEdit()
+        msg_card.content_layout.addWidget(self.edit_msg_prompt)
+
+        msg_card.content_layout.addWidget(QLabel("Celebration (YES):"))
+        self.edit_msg_yes = QLineEdit()
+        msg_card.content_layout.addWidget(self.edit_msg_yes)
+
+        msg_card.content_layout.addWidget(QLabel("Postponed (NO):"))
+        self.edit_msg_no = QLineEdit()
+        msg_card.content_layout.addWidget(self.edit_msg_no)
+
+        btn_restore_msgs = QPushButton("Restore Default Dialogue")
+        btn_restore_msgs.setProperty("class", "secondaryBtn")
+        btn_restore_msgs.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        btn_restore_msgs.clicked.connect(self._restore_default_messages)
+        msg_card.content_layout.addWidget(btn_restore_msgs)
+        layout.addWidget(msg_card)
 
         layout.addStretch()
         scroll.setWidget(widget)
         return scroll
 
-    def _create_card(self, title: str):
-        card = QFrame()
-        card.setStyleSheet(f"background-color: {TOKENS.BG_CARD}; border: 1px solid {TOKENS.BORDER_DEFAULT}; border-radius: {TOKENS.RADIUS_LG}; padding: 12px;")
-        lbl = QLabel(title)
-        lbl.setStyleSheet(f"font-size: 13.5px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER}; margin-bottom: 4px;")
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(14, 12, 14, 14)
-        layout.setSpacing(10)
-        layout.addWidget(lbl)
-        return card, layout
+    # PAGE 5: Advanced & About
+    def _build_advanced_tab(self) -> QWidget:
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
+
+        # About & Diagnostics
+        info_card = GlassCard("Application Information & Diagnostics", "Technical telemetry and system paths")
+        info_rows = [
+            ("Version:", "1.0.0 (Aquatic Liquid Glass Edition)"),
+            ("Framework:", "PySide6 (Qt 6.12) / Python 3.11"),
+            ("Rendering Engine:", "Hardware Accelerated 2D Vector & PBR Alpha Blending"),
+            ("Config Path:", str(self.config_manager.settings_file)),
+            ("Log Path:", str(Path(os.environ.get("APPDATA", "")) / "SpiderManWaterBuddy" / "logs" / "app.log")),
+        ]
+        for label, val in info_rows:
+            row = QHBoxLayout()
+            lbl_k = QLabel(label)
+            lbl_k.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-weight: 700; width: 120px;")
+            lbl_v = QLabel(val)
+            lbl_v.setStyleSheet(f"color: {TOKENS.TEXT_PRIMARY}; font-size: 12px;")
+            row.addWidget(lbl_k)
+            row.addWidget(lbl_v)
+            row.addStretch()
+            info_card.content_layout.addLayout(row)
+        layout.addWidget(info_card)
+
+        # Configuration Recovery & Reset
+        bak_card = GlassCard("Configuration Backup & Safety", "Revert changes or restore defaults")
+        bak_layout = QHBoxLayout()
+        bak_layout.setSpacing(12)
+
+        btn_restore_bak = QPushButton("🔄 Restore Settings Backup")
+        btn_restore_bak.setProperty("class", "secondaryBtn")
+        btn_restore_bak.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        btn_restore_bak.clicked.connect(self._restore_backup)
+        bak_layout.addWidget(btn_restore_bak)
+
+        btn_reset_defaults = QPushButton("⚠️ Reset All Defaults")
+        btn_reset_defaults.setStyleSheet(f"""
+            QPushButton {{
+                background-color: rgba(239, 68, 68, 0.15);
+                color: #f87171;
+                border: 1px solid rgba(239, 68, 68, 0.4);
+                border-radius: {TOKENS.RADIUS_MD};
+                padding: 8px 16px;
+                font-weight: 700;
+            }}
+            QPushButton:hover {{
+                background-color: #ef4444;
+                color: #ffffff;
+            }}
+        """)
+        btn_reset_defaults.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        btn_reset_defaults.clicked.connect(self._reset_defaults)
+        bak_layout.addWidget(btn_reset_defaults)
+        bak_layout.addStretch()
+
+        bak_card.content_layout.addLayout(bak_layout)
+        layout.addWidget(bak_card)
+
+        layout.addStretch()
+        scroll.setWidget(widget)
+        return scroll
 
     def _connect_engine_signals(self):
         self.engine.timerTick.connect(self._on_timer_tick)
@@ -442,29 +586,29 @@ class DashboardWindow(QWidget):
     def _on_timer_tick(self, seconds: int):
         if seconds < 0 or self.settings.reminders_paused or not self.settings.reminders_enabled:
             self.lbl_countdown.setText("Paused")
-            self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TOKENS.STATUS_WARNING};")
+            self.lbl_countdown.setStyleSheet(f"font-size: 22px; font-weight: 900; color: {TOKENS.STATUS_WARNING};")
         elif seconds == 0:
             self.lbl_countdown.setText("DUE NOW!")
-            self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER};")
+            self.lbl_countdown.setStyleSheet(f"font-size: 22px; font-weight: 900; color: {TOKENS.ACCENT_MINT};")
         else:
             mins, secs = divmod(seconds, 60)
             self.lbl_countdown.setText(f"{mins:02d}:{secs:02d}")
-            self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER};")
+            self.lbl_countdown.setStyleSheet(f"font-size: 24px; font-weight: 900; color: {TOKENS.ACCENT_AQUA};")
 
     def _on_state_changed(self, state: ReminderState):
         if state == ReminderState.PAUSED:
             self.lbl_companion_status.setText("⏸️ PAUSED")
-            self.lbl_companion_status.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {TOKENS.STATUS_WARNING};")
+            self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.STATUS_WARNING};")
             self.btn_pause_toggle.setText("▶️ Resume Reminders")
         elif state == ReminderState.QUIET_HOURS:
             self.lbl_companion_status.setText("🌙 QUIET HOURS")
-            self.lbl_companion_status.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {TOKENS.TEXT_MUTED};")
+            self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.TEXT_MUTED};")
         elif state == ReminderState.WAITING_FOR_RESPONSE:
             self.lbl_companion_status.setText("💧 REMINDER ACTIVE")
-            self.lbl_companion_status.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {TOKENS.ACCENT_RED_HOVER};")
+            self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.ACCENT_AQUA};")
         else:
             self.lbl_companion_status.setText("🟢 ACTIVE")
-            self.lbl_companion_status.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {TOKENS.STATUS_SUCCESS};")
+            self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.STATUS_SUCCESS};")
             self.btn_pause_toggle.setText("⏸️ Pause Reminders")
 
     def _on_stats_updated(self, count: int, ml: int):
@@ -473,10 +617,12 @@ class DashboardWindow(QWidget):
         pct = min(100, int((ml / goal) * 100)) if goal > 0 else 0
         self.lbl_hydro_stats.setText(f"{ml} / {goal} ml ({pct}%)")
         self.progress_hydro.setValue(pct)
+        # Update animated fluid reservoir
+        self.reservoir_widget.set_values(ml, goal)
 
     def _quick_log_water(self, ml: int):
         self.engine.on_user_drank_water(ml)
-        self.status_save_label.setText(f"Logged +{ml} ml of water! Great job.")
+        self.status_save_label.setText(f"Logged +{ml} ml of water! Great job staying hydrated 💧")
 
     def _on_toggle_pause_clicked(self):
         new_state = not self.settings.reminders_paused
@@ -504,6 +650,7 @@ class DashboardWindow(QWidget):
         # Identity
         self.edit_comp_name.setText(s.companion_name)
         self.edit_user_name.setText(s.user_name)
+        self.spin_daily_goal.setValue(s.daily_hydration_goal_ml)
 
         # Windows
         self.chk_startup.setChecked(s.launch_at_startup)
@@ -512,7 +659,6 @@ class DashboardWindow(QWidget):
 
         # Reminders
         self.chk_reminders_enabled.setChecked(s.reminders_enabled)
-        matching_idx = -1
         preset_map = {15: 0, 30: 1, 45: 2, 60: 3, 90: 4}
         if s.reminder_interval_minutes in preset_map:
             self.combo_interval.setCurrentIndex(preset_map[s.reminder_interval_minutes])
@@ -544,13 +690,14 @@ class DashboardWindow(QWidget):
         self.chk_perf_mode.setChecked(s.performance_mode)
         self.chk_sound.setChecked(s.sound_effects_enabled)
 
-        # Initial dashboard stats update
+        # Sync reservoir and telemetry
         self._on_stats_updated(s.today_reminders_completed, s.today_intake_ml)
 
     def save_and_apply(self):
         s = self.settings
         s.companion_name = self.edit_comp_name.text().strip() or "Spider-Man"
         s.user_name = self.edit_user_name.text().strip() or "Hero"
+        s.daily_hydration_goal_ml = self.spin_daily_goal.value()
 
         # Windows
         if s.launch_at_startup != self.chk_startup.isChecked():
@@ -593,6 +740,8 @@ class DashboardWindow(QWidget):
         self.settingsChanged.emit()
 
         self.status_save_label.setText(f"Settings saved successfully at {datetime.now().strftime('%H:%M:%S')}")
+        # Refresh reservoir goal
+        self._on_stats_updated(s.today_reminders_completed, s.today_intake_ml)
 
     def _restore_default_messages(self):
         defaults = AppSettings()

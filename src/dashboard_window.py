@@ -33,6 +33,8 @@ from src.reminder_engine import ReminderEngine, ReminderState
 from src.theme import get_dashboard_qss, TOKENS
 from src.components.glass_card import GlassCard
 from src.components.liquid_reservoir import LiquidReservoirWidget
+from src.components.streak_card import StreakCardWidget
+from src.streak_tracker import StreakInfo
 
 
 class DashboardWindow(QWidget):
@@ -273,7 +275,11 @@ class DashboardWindow(QWidget):
         reservoir_card.content_layout.addLayout(res_layout)
         layout.addWidget(reservoir_card)
 
-        # 3. Quick Action Controls Card
+        # 3. Daily Hydration Goal & Streak Tracker Card
+        self.streak_card = StreakCardWidget()
+        layout.addWidget(self.streak_card)
+
+        # 4. Quick Action Controls Card
         ctrl_card = GlassCard("Companion Quick Controls", "Pause or hide desktop overlay")
         ctrl_layout = QHBoxLayout()
         ctrl_layout.setSpacing(12)
@@ -582,6 +588,16 @@ class DashboardWindow(QWidget):
         self.engine.timerTick.connect(self._on_timer_tick)
         self.engine.stateChanged.connect(self._on_state_changed)
         self.engine.statsUpdated.connect(self._on_stats_updated)
+        self.engine.streakUpdated.connect(self._on_streak_updated)
+        self.engine.goalCelebrated.connect(self._on_goal_celebrated)
+
+    def _on_streak_updated(self, info: StreakInfo):
+        if hasattr(self, "streak_card"):
+            self.streak_card.update_info(info)
+
+    def _on_goal_celebrated(self, msg: str):
+        if hasattr(self, "streak_card"):
+            self.streak_card.trigger_celebration(msg)
 
     def _on_timer_tick(self, seconds: int):
         if self.engine.state == ReminderState.QUIET_HOURS:
@@ -730,6 +746,8 @@ class DashboardWindow(QWidget):
 
         # Sync reservoir and telemetry
         self._on_stats_updated(s.today_reminders_completed, s.today_intake_ml)
+        if hasattr(self, "streak_card"):
+            self.streak_card.update_info(self.engine.get_streak_info())
 
     def save_and_apply(self):
         s = self.settings
@@ -778,8 +796,10 @@ class DashboardWindow(QWidget):
         self.settingsChanged.emit()
 
         self.status_save_label.setText(f"Settings saved successfully at {datetime.now().strftime('%H:%M:%S')}")
-        # Refresh reservoir goal
+        # Refresh reservoir goal and streak card
         self._on_stats_updated(s.today_reminders_completed, s.today_intake_ml)
+        if hasattr(self, "streak_card"):
+            self.streak_card.update_info(self.engine.get_streak_info())
 
     def _restore_default_messages(self):
         defaults = AppSettings()

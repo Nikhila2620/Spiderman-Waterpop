@@ -84,3 +84,76 @@ def test_dashboard_countdown_formatting(qapp):
         # 5. Paused
         dash._on_timer_tick(-1)
         assert dash.lbl_countdown.text() == "Paused"
+
+
+def test_dashboard_streak_card_integration(qapp):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config_path = Path(tmpdir) / "settings.json"
+        cm = ConfigManager(custom_path=config_path)
+        cm.settings.daily_hydration_goal_ml = 2000
+        cm.settings.today_intake_ml = 1500
+        cm.settings.last_tracking_date = date.today().isoformat()
+        cm.save()
+
+        engine = ReminderEngine(cm)
+        dash = DashboardWindow(cm, engine)
+
+        # 1. Initial State: 1500 / 2000 mL (75%), In Progress
+        assert hasattr(dash, "streak_card"), "Dashboard must contain streak_card component"
+        assert "1,500 / 2,000 mL" in dash.streak_card.lbl_intake_numbers.text()
+        assert dash.streak_card.lbl_pct.text() == "75%"
+        assert dash.streak_card.lbl_status.text() == "⏳ In Progress"
+        assert dash.streak_card.is_celebration_active is False
+
+        # 2. Log +500 mL to reach exactly 2,000 mL (Goal reached!)
+        dash._quick_log_water(500)
+
+        assert cm.settings.today_intake_ml == 2000
+        assert cm.settings.streak_current == 1
+        assert "2,000 / 2,000 mL" in dash.streak_card.lbl_intake_numbers.text()
+        assert dash.streak_card.lbl_pct.text() == "100%"
+        assert dash.streak_card.lbl_status.text() == "✨ Goal Completed!"
+        assert "🔥 1-Day Streak" in dash.streak_card.lbl_streak_count.text()
+        assert dash.streak_card.is_celebration_active is True
+        assert "Goal Complete! 🔥 You're on a 1-Day Streak!" in dash.streak_card.lbl_celebration_text.text()
+
+        # 3. Log an additional +250 mL (2,250 mL): Streak should remain 1 and not re-trigger celebration
+        dash._quick_log_water(250)
+        assert cm.settings.today_intake_ml == 2250
+        assert cm.settings.streak_current == 1
+        assert "2,250 / 2,000 mL" in dash.streak_card.lbl_intake_numbers.text()
+        assert "🔥 1-Day Streak" in dash.streak_card.lbl_streak_count.text()
+
+
+def test_streak_card_component_unit(qapp):
+    from src.components.streak_card import StreakCardWidget
+    from src.streak_tracker import StreakInfo
+
+    card = StreakCardWidget()
+    assert card.title == "Daily Hydration Streak"
+
+    # Simulate info update with in-progress state
+    info = StreakInfo(
+        current_streak=3,
+        longest_streak=7,
+        today_intake_ml=1000,
+        daily_goal_ml=2000,
+        is_completed_today=False,
+        celebrated_today=False,
+        progress_percentage=50,
+        last_completed_date="",
+    )
+    card.update_info(info)
+    assert card.lbl_streak_count.text() == "🔥 3-Day Streak"
+    assert card.lbl_longest_streak.text() == "Personal Best: 7 days"
+    assert card.lbl_pct.text() == "50%"
+    assert card.progress_bar.value() == 50
+    assert card.lbl_status.text() == "⏳ In Progress"
+    assert card.is_celebration_active is False
+
+    # Simulate celebration trigger
+    card.trigger_celebration("Goal Complete! 🔥 You're on a 4-Day Streak!")
+    assert card.is_celebration_active is True
+    assert "4-Day Streak" in card.lbl_celebration_text.text()
+
+

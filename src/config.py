@@ -8,6 +8,7 @@ import json
 import logging
 import shutil
 from dataclasses import dataclass, field, asdict
+from datetime import date
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -42,11 +43,15 @@ class AppSettings:
     daily_active_start: str = "09:00"
     daily_active_end: str = "21:00"
 
-    # Hydration tracking
+    # Hydration tracking & Streak
     daily_hydration_goal_ml: int = 2000
     today_reminders_completed: int = 0
     today_intake_ml: int = 0
     last_tracking_date: str = ""
+    streak_current: int = 0
+    streak_longest: int = 0
+    streak_last_completed_date: str = ""
+    streak_celebrated_today: bool = False
 
     # Appearance & Window behavior
     corner_position: str = "top-right"  # "top-right", "top-left", "bottom-right", "bottom-left"
@@ -76,6 +81,19 @@ class AppSettings:
         self.snooze_duration_minutes = max(1, min(120, int(self.snooze_duration_minutes)))
         self.retry_interval_minutes = max(1, min(120, int(self.retry_interval_minutes)))
         self.daily_hydration_goal_ml = max(100, min(10000, int(self.daily_hydration_goal_ml)))
+        self.today_intake_ml = max(0, int(self.today_intake_ml))
+        self.streak_current = max(0, int(self.streak_current))
+        self.streak_longest = max(0, int(self.streak_longest))
+        if self.streak_current > self.streak_longest:
+            self.streak_longest = self.streak_current
+        if not isinstance(self.streak_last_completed_date, str):
+            self.streak_last_completed_date = ""
+        elif self.streak_last_completed_date:
+            try:
+                date.fromisoformat(self.streak_last_completed_date)
+            except Exception:
+                self.streak_last_completed_date = ""
+        self.streak_celebrated_today = bool(self.streak_celebrated_today)
 
         # Constrain scale
         self.character_scale = max(0.5, min(2.0, float(self.character_scale)))

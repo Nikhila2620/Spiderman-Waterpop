@@ -10,6 +10,7 @@ from typing import Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 from src.config import ConfigManager, AppSettings
+from src.streak_tracker import StreakTracker, StreakEvent, StreakInfo
 
 logger = logging.getLogger("SpiderManWaterBuddy.ReminderEngine")
 
@@ -34,11 +35,14 @@ class ReminderEngine(QObject):
     stateChanged = Signal(ReminderState)
     timerTick = Signal(int)  # seconds remaining until next reminder
     statsUpdated = Signal(int, int)  # completed count, total ml logged
+    streakUpdated = Signal(object)  # StreakInfo
+    goalCelebrated = Signal(str)  # Celebration message
 
     def __init__(self, config_manager: ConfigManager, parent=None):
         super().__init__(parent)
         self.config_manager = config_manager
         self.settings = config_manager.settings
+        self.streak_tracker = StreakTracker(self.config_manager)
 
         self.state = ReminderState.IDLE
         self._target_time: Optional[datetime] = None
@@ -53,14 +57,11 @@ class ReminderEngine(QObject):
         self._heartbeat.start()
 
     def _check_daily_date_reset(self) -> None:
-        """Resets today's stats if the calendar date changed."""
-        today_str = date.today().isoformat()
-        if self.settings.last_tracking_date != today_str:
-            self.settings.last_tracking_date = today_str
-            self.settings.today_reminders_completed = 0
-            self.settings.today_intake_ml = 0
-            self.config_manager.save()
+        """Resets today's stats and updates streak continuity if the calendar date changed."""
+        rolled_over = self.streak_tracker.check_rollover()
+        if rolled_over:
             self.statsUpdated.emit(0, 0)
+            self.streakUpdated.emit(self.streak_tracker.get_info())
 
     def is_in_quiet_hours(self, dt: Optional[datetime] = None) -> bool:
         """Determines if the specified datetime (or now) is within quiet hours."""
@@ -182,21 +183,32 @@ class ReminderEngine(QObject):
 
     # User response handlers
     def on_user_drank_water(self, ml: Optional[int] = None) -> None:
-        """User clicked YES."""
+        """User clicked YES or logged water intake."""
         if self.state != ReminderState.WAITING_FOR_RESPONSE:
             # Allow manual trigger or celebration even if outside exact window
             pass
 
         self._check_daily_date_reset()
         self.settings.today_reminders_completed += 1
-        if ml is not None and ml > 0:
-            self.settings.today_intake_ml += ml
 
-        self.config_manager.save()
+        amount = ml if (ml is not None and ml > 0) else 250
+        event = self.streak_tracker.record_intake(amount)
+        info = self.streak_tracker.get_info()
+
         self.statsUpdated.emit(self.settings.today_reminders_completed, self.settings.today_intake_ml)
+        self.streakUpdated.emit(info)
+
+        if event == StreakEvent.GOAL_REACHED_FIRST_TIME:
+            msg = f"Goal Complete! 🔥 You're on a {info.current_streak}-Day Streak!"
+            logger.info(f"Goal reached for the first time today: {msg}")
+            self.goalCelebrated.emit(msg)
 
         # Reset schedule for next recurring interval
         self.reset_schedule()
+
+    def get_streak_info(self) -> StreakInfo:
+        """Returns the current validated streak telemetry snapshot."""
+        return self.streak_tracker.get_info()
 
     def on_user_snoozed(self, custom_minutes: Optional[int] = None) -> None:
         """User clicked Snooze."""

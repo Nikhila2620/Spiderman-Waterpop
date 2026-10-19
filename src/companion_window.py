@@ -71,13 +71,13 @@ class CompanionWindow(QWidget):
 
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(10, 0, 10, 10)
+        main_layout.setContentsMargins(5, 0, 5, 10)
         main_layout.setSpacing(0)
 
         # 1. Spider-Man Hanging Character Widget
         spidey_box = QHBoxLayout()
         spidey_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.spidey = SpideyWidget(parent=self, width=230, height=320)
+        self.spidey = SpideyWidget(parent=self, width=260, height=325)
         self.spidey.hoverEntered.connect(self._on_spidey_hover_enter)
         self.spidey.hoverLeft.connect(self._on_spidey_hover_leave)
         self.spidey.clicked.connect(self._on_spidey_clicked)
@@ -435,7 +435,7 @@ class CompanionWindow(QWidget):
         self.btn_yes.setEnabled(False)
         self.btn_no.setEnabled(False)
         self.waterDrank.emit()
-        self._auto_close_timer.start(2000)
+        self._auto_close_timer.start(3200)
 
     def _on_no_clicked(self):
         self.spidey.set_state(SpideyWidget.STATE_DISAPPOINTED)

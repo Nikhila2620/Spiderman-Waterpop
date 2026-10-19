@@ -58,9 +58,16 @@ class SpideyWidget(QWidget):
 
         self._animation_enabled = True
         self._performance_mode = False
+        self._character_scale = 1.0
 
         self._init_assets()
         self._init_animations()
+
+    def set_character_scale(self, scale: float):
+        """Sets the character rendering scale (0.75x to 1.5x)."""
+        self._character_scale = max(0.75, min(1.5, float(scale)))
+        self.setFixedSize(int(230 * self._character_scale), int(320 * self._character_scale))
+        self.update()
 
     def set_animation_enabled(self, enabled: bool):
         """Toggles the pendulum swing animation on or off."""
@@ -217,8 +224,8 @@ class SpideyWidget(QWidget):
 
     def _get_char_rect(self) -> QRectF:
         """Returns the base bounding rect of Spider-Man with buffer margins to prevent clipping."""
-        char_w = 175.0
-        char_h = 245.0
+        char_w = 175.0 * self._character_scale
+        char_h = 245.0 * self._character_scale
         char_x = (self.width() - char_w) / 2.0
         char_y = 0.0
         return QRectF(char_x, char_y, char_w, char_h)

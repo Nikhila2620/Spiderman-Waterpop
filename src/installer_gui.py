@@ -28,24 +28,37 @@ from PySide6.QtWidgets import (
 )
 
 from src.theme import get_dialog_qss, TOKENS
+from src.version import VERSION, APP_NAME
 
-APP_NAME = "Spider-Man Water Buddy"
-VERSION = "1.0.0"
 PUBLISHER = "Antigravity"
 UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\SpiderManWaterBuddy"
 
 
 def create_windows_shortcut(target_exe: Path, shortcut_path: Path, icon_path: Path):
-    """Creates a Windows .lnk shortcut natively via PowerShell WScript.Shell."""
-    ps_cmd = f"""
-    $WshShell = New-Object -ComObject WScript.Shell;
-    $Shortcut = $WshShell.CreateShortcut('{shortcut_path}');
-    $Shortcut.TargetPath = '{target_exe}';
-    $Shortcut.IconLocation = '{icon_path}, 0';
-    $Shortcut.WorkingDirectory = '{target_exe.parent}';
-    $Shortcut.Save();
-    """
-    subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+    """Creates a Windows .lnk shortcut safely via PowerShell WScript.Shell with parameterized arguments."""
+    ps_script = (
+        "param($target, $lnk, $icon, $workdir); "
+        "$WshShell = New-Object -ComObject WScript.Shell; "
+        "$Shortcut = $WshShell.CreateShortcut($lnk); "
+        "$Shortcut.TargetPath = $target; "
+        "$Shortcut.IconLocation = \"$icon, 0\"; "
+        "$Shortcut.WorkingDirectory = $workdir; "
+        "$Shortcut.Save();"
+    )
+    subprocess.run(
+        [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-Command", ps_script,
+            "-target", str(target_exe.resolve()),
+            "-lnk", str(shortcut_path.resolve()),
+            "-icon", str(icon_path.resolve()),
+            "-workdir", str(target_exe.parent.resolve()),
+        ],
+        check=True,
+        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+    )
 
 
 class InstallWorker(QThread):
@@ -131,8 +144,8 @@ class InstallWorker(QThread):
                     # Security: Validate all entries against Zip-Slip path traversal before extracting
                     for name in names:
                         entry_dest = (self.target_dir / name).resolve()
-                        if not str(entry_dest).startswith(str(resolved_target)):
-                            raise SecurityError(f"Security error: Archive entry '{name}' attempts path traversal outside target directory.")
+                        if not entry_dest.is_relative_to(resolved_target):
+                            raise PermissionError(f"Security error: Archive entry '{name}' attempts path traversal outside target directory.")
 
                     total_files = len(names)
                     for idx, name in enumerate(names):

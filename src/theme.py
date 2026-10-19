@@ -9,47 +9,47 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ThemeTokens:
-    # Deep Aquatic Indigo Backgrounds
-    BG_BASE: str = "#07111e"       # Deepest abyss
-    BG_SURFACE: str = "#0c1a2e"    # Midnight aquatic surface
-    BG_CARD: str = "rgba(12, 26, 46, 0.72)"  # Translucent frosted glass card
-    BG_CARD_SOLID: str = "#0d1d33" # Fallback solid card
-    BG_CARD_HOVER: str = "rgba(16, 36, 64, 0.85)" # Luminous hover surface
-    BG_INPUT: str = "rgba(8, 20, 36, 0.75)"       # Deep sunken glass input
-    BG_OVERLAY: str = "rgba(7, 17, 30, 0.90)"     # Companion overlay frosted glass
+    # Comic-Panel Night-City Palette
+    BG_BASE: str = "#0b0e14"       # Obsidian Night
+    BG_SURFACE: str = "#121824"    # Midnight Panel
+    BG_CARD: str = "rgba(18, 24, 36, 0.88)"  # Translucent frosted midnight card
+    BG_CARD_SOLID: str = "#121824" # Midnight Panel solid
+    BG_CARD_HOVER: str = "rgba(25, 34, 52, 0.95)" # Hover midnight surface
+    BG_INPUT: str = "rgba(11, 14, 20, 0.85)"       # Deep Obsidian input
+    BG_OVERLAY: str = "rgba(11, 14, 20, 0.92)"     # Companion overlay frosted glass
 
-    # Aquatic Liquid Glass Accents
-    ACCENT_AQUA: str = "#00f0ff"        # Glowing cyan / electric water
-    ACCENT_AZURE: str = "#0a84ff"       # Deep oceanic electric blue
-    ACCENT_MINT: str = "#00e699"        # Hydration complete / health mint
-    ACCENT_TEAL: str = "#06b6d4"        # Intermediate cyan gradient
+    # Luminous Hero Accents
+    ACCENT_AQUA: str = "#00d2ff"        # Web Fluid Blue
+    ACCENT_AZURE: str = "#00a3ff"       # Deep electric blue
+    ACCENT_MINT: str = "#00f5a0"        # Bio-Venom Cyan
+    ACCENT_TEAL: str = "#00e0d0"        # Intermediate cyan gradient
 
-    # Character Brand Accents (Spider-Man Heritage)
-    ACCENT_RED: str = "#e11d48"         # Spidey crimson red
-    ACCENT_RED_HOVER: str = "#f43f5e"   # Glowing scarlet
-    ACCENT_RED_ACTIVE: str = "#be123c"  # Deep crimson
-    ACCENT_RUBY: str = "#fb7185"        # Soft ruby highlight
-    ACCENT_GOLD: str = "#f59e0b"        # Web amber / snooze alert
+    # Character Brand Accents (Crimson Spider Heritage)
+    ACCENT_RED: str = "#ff3355"         # Crimson Spider
+    ACCENT_RED_HOVER: str = "#ff5577"   # Glowing Crimson highlight
+    ACCENT_RED_ACTIVE: str = "#e02040"  # Deep Crimson pressed
+    ACCENT_RUBY: str = "#ff6b8b"        # Soft ruby highlight
+    ACCENT_GOLD: str = "#ffb800"        # Silk Amber / Cooldown warning
 
     # Status Colors
-    STATUS_SUCCESS: str = "#00e699"     # Mint hydration
-    STATUS_WARNING: str = "#f59e0b"     # Amber snooze
-    STATUS_ERROR: str = "#ef4444"       # Declined red
-    STATUS_INFO: str = "#00f0ff"        # Aqua alert
+    STATUS_SUCCESS: str = "#00f5a0"     # Bio-Venom Cyan
+    STATUS_WARNING: str = "#ffb800"     # Silk Amber
+    STATUS_ERROR: str = "#ff3355"       # Crimson Spider
+    STATUS_INFO: str = "#00d2ff"        # Web Fluid Blue
 
     # Text Colors
-    TEXT_PRIMARY: str = "#ffffff"       # Pure crisp white for headings
-    TEXT_SECONDARY: str = "#a8c4d8"     # Frosted slate for body
-    TEXT_MUTED: str = "#6a8ca8"         # Subdued oceanic slate
+    TEXT_PRIMARY: str = "#ffffff"       # Crisp white
+    TEXT_SECONDARY: str = "#a8c4d8"     # Frosted slate
+    TEXT_MUTED: str = "#6a8ca8"         # Subdued slate
     TEXT_SUBTLE: str = "#45627a"        # Disabled / placeholder
 
-    # Refraction Borders & Dividers
-    BORDER_GLASS: str = "rgba(0, 240, 255, 0.22)"       # Subtle glass refraction border
-    BORDER_GLASS_ACTIVE: str = "rgba(0, 240, 255, 0.55)" # Glowing aqua edge
-    BORDER_DEFAULT: str = "#142842"                      # Structural deep slate border
-    BORDER_SUBTLE: str = "#0e1e33"                       # Card dividers
-    BORDER_FOCUS: str = "#00f0ff"                        # Aqua focus glow
-    BORDER_RED: str = "#e11d48"                          # Spider accent border
+    # Web Mist Refraction Borders & Dividers
+    BORDER_GLASS: str = "rgba(255, 255, 255, 0.08)"       # Web Mist stroke
+    BORDER_GLASS_ACTIVE: str = "rgba(0, 210, 255, 0.40)" # Luminous Web Fluid Blue edge
+    BORDER_DEFAULT: str = "rgba(255, 255, 255, 0.08)"     # Web Mist stroke
+    BORDER_SUBTLE: str = "rgba(255, 255, 255, 0.04)"      # Card dividers
+    BORDER_FOCUS: str = "#00d2ff"                         # Web Fluid Blue focus glow
+    BORDER_RED: str = "#ff3355"                           # Crimson Spider accent border
 
     # Radii (Apple-style smooth curvature)
     RADIUS_SM: str = "6px"
@@ -194,8 +194,58 @@ def get_dashboard_qss() -> str:
                 stop: 1 #4df4ff
             );
         }}
+        QPushButton.heroDrinkBtn {{
+            background: qlineargradient(
+                x1: 0, y1: 0, x2: 1, y2: 0,
+                stop: 0 {TOKENS.ACCENT_RED},
+                stop: 1 {TOKENS.ACCENT_RED_HOVER}
+            );
+            color: #ffffff;
+            font-size: 14.5px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(255, 51, 85, 0.4);
+            border-radius: {TOKENS.RADIUS_LG};
+            padding: 12px 24px;
+        }}
+        QPushButton.heroDrinkBtn:hover {{
+            background: qlineargradient(
+                x1: 0, y1: 0, x2: 1, y2: 0,
+                stop: 0 {TOKENS.ACCENT_RED_HOVER},
+                stop: 1 #ff7799
+            );
+            border-color: {TOKENS.ACCENT_AQUA};
+        }}
+        QPushButton.heroDrinkBtn:pressed {{
+            background-color: {TOKENS.ACCENT_RED_ACTIVE};
+        }}
+        QPushButton.heroDrinkBtn:disabled {{
+            background-color: rgba(25, 34, 52, 0.6);
+            color: {TOKENS.TEXT_MUTED};
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }}
+        QPushButton.chipBtn {{
+            background-color: rgba(18, 24, 36, 0.9);
+            color: {TOKENS.TEXT_SECONDARY};
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: {TOKENS.RADIUS_SM};
+            padding: 6px 14px;
+        }}
+        QPushButton.chipBtn:hover {{
+            background-color: rgba(25, 34, 52, 1.0);
+            color: {TOKENS.ACCENT_AQUA};
+            border-color: {TOKENS.BORDER_GLASS_ACTIVE};
+        }}
+        QPushButton.chipBtn[selected="true"] {{
+            background-color: rgba(0, 210, 255, 0.15);
+            color: {TOKENS.ACCENT_AQUA};
+            border: 1.5px solid {TOKENS.ACCENT_AQUA};
+            font-weight: 800;
+        }}
         QPushButton.secondaryBtn {{
-            background-color: rgba(12, 26, 46, 0.8);
+            background-color: rgba(18, 24, 36, 0.8);
             color: {TOKENS.TEXT_SECONDARY};
             font-weight: 600;
             border: 1px solid {TOKENS.BORDER_GLASS};
@@ -204,7 +254,7 @@ def get_dashboard_qss() -> str:
             font-size: 12.5px;
         }}
         QPushButton.secondaryBtn:hover {{
-            background-color: rgba(16, 36, 64, 0.95);
+            background-color: rgba(25, 34, 52, 0.95);
             color: {TOKENS.TEXT_PRIMARY};
             border-color: {TOKENS.BORDER_GLASS_ACTIVE};
         }}

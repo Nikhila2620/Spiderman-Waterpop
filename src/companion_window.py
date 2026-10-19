@@ -38,10 +38,10 @@ class CompanionWindow(QWidget):
     declined = Signal()
     dismissed = Signal()
 
-    def __init__(self, config_manager: ConfigManager, parent=None):
+    def __init__(self, config_manager: Optional[ConfigManager] = None, parent=None):
         super().__init__(parent)
-        self.config_manager = config_manager
-        self.settings = config_manager.settings
+        self.config_manager = config_manager or ConfigManager()
+        self.settings = self.config_manager.settings
 
         # Window Flags: Frameless, Always on Top, Tool Window (does not steal focus or show in Alt-Tab)
         self.setWindowFlags(
@@ -63,6 +63,7 @@ class CompanionWindow(QWidget):
 
         self._init_ui()
         self._setup_screen_monitoring()
+        self.spidey.set_character_scale(self.settings.character_scale)
         self.spidey.set_animation_enabled(self.settings.animation_enabled)
         self.spidey.set_performance_mode(self.settings.performance_mode)
         self.reposition()
@@ -259,11 +260,10 @@ class CompanionWindow(QWidget):
         logger.info("Display configuration changed. Recalculating placement...")
         self.reposition()
 
-    def reposition(self):
-        """Places the window at the configured desktop corner with DPI awareness."""
+    def _get_base_corner_pos(self) -> tuple[int, int]:
         screen = QGuiApplication.primaryScreen()
         if not screen:
-            return
+            return 0, 0
 
         geom = screen.availableGeometry()
         pos = self.settings.corner_position
@@ -287,7 +287,24 @@ class CompanionWindow(QWidget):
             x = geom.right() - w - 24
             y = geom.top()
 
-        self.move(x, y)
+        return x, y
+
+    def reposition(self):
+        """Places the window at the configured desktop corner with DPI awareness and offset."""
+        screen = QGuiApplication.primaryScreen()
+        if not screen:
+            return
+
+        base_x, base_y = self._get_base_corner_pos()
+        target_x = base_x + getattr(self.settings, "window_offset_x", 0)
+        target_y = base_y + getattr(self.settings, "window_offset_y", 0)
+
+        # Clamp within available screen geometry
+        geom = screen.availableGeometry()
+        target_x = max(geom.left(), min(geom.right() - self.width(), target_x))
+        target_y = max(geom.top(), min(geom.bottom() - self.height(), target_y))
+
+        self.move(target_x, target_y)
 
     # Windows Click-Through & Focus Management
     def apply_click_through(self, enable: bool):
@@ -339,7 +356,13 @@ class CompanionWindow(QWidget):
             event.accept()
 
     def mouseReleaseEvent(self, event):
-        self._drag_start_pos = None
+        if self._drag_start_pos is not None:
+            self._drag_start_pos = None
+            base_x, base_y = self._get_base_corner_pos()
+            self.settings.window_offset_x = self.x() - base_x
+            self.settings.window_offset_y = self.y() - base_y
+            self.config_manager.save()
+            logger.info(f"Persisted window offset: ({self.settings.window_offset_x}, {self.settings.window_offset_y})")
 
     # Reminder trigger mode
     def trigger_reminder_mode(self):
@@ -366,6 +389,13 @@ class CompanionWindow(QWidget):
                 self.raise_()
         else:
             self.raise_()
+
+    @property
+    def default_message(self) -> str:
+        return self._get_personalized_greeting()
+
+    def reset_popup(self):
+        self.reset_card_ui()
 
     def reset_card_ui(self):
         self._auto_close_timer.stop()
@@ -444,17 +474,28 @@ class CompanionWindow(QWidget):
         self.snoozeRequested.emit(minutes)
         self._auto_close_timer.start(1500)
 
+    def is_in_reminder_mode(self) -> bool:
+        """Returns True if the companion is currently in an active reminder interaction."""
+        return self._in_reminder_mode
+
+    def dismiss(self):
+        """Programmatically dismisses the companion window and cancels auto-close timer (MED-05)."""
+        self._auto_close_timer.stop()
+        self._in_reminder_mode = False
+        self.apply_click_through(self.settings.click_through_enabled)
+        self.reset_card_ui()
+        self.dismissed.emit()
+        self.hide()
+
     def _on_auto_close(self):
+        self._auto_close_timer.stop()
         self._in_reminder_mode = False
         self.apply_click_through(self.settings.click_through_enabled)
         self.reset_card_ui()
         self.hide()
 
     def _on_dismiss_clicked(self):
-        self._in_reminder_mode = False
-        self.apply_click_through(self.settings.click_through_enabled)
-        self.dismissed.emit()
-        self.hide()
+        self.dismiss()
 
 
 # Backward compatibility alias

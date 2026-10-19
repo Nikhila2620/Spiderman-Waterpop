@@ -1,7 +1,7 @@
 """
-Deterministic Water Reminder Engine for Spider-Man Water Buddy.
-Implements an authoritative state machine with independent snooze, retry, quiet hours,
-midnight-crossing schedules, and daily hydration tracking.
+Authoritative Water Reminder Engine for Spider-Man Water Buddy v2.0.
+Implements a strict finite-state machine with independent snooze, retry, quiet hours,
+manual log cooldown integration, sleep/wake resilience, and midnight rollover.
 """
 from enum import Enum, auto
 from datetime import datetime, time, date, timedelta
@@ -10,7 +10,7 @@ from typing import Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 from src.config import ConfigManager, AppSettings
-from src.streak_tracker import StreakTracker, StreakEvent, StreakInfo
+from src.streak_tracker import StreakTracker, StreakEvent, StreakInfo, LogResult
 
 logger = logging.getLogger("SpiderManWaterBuddy.ReminderEngine")
 
@@ -34,9 +34,11 @@ class ReminderEngine(QObject):
     reminderTriggered = Signal()
     stateChanged = Signal(ReminderState)
     timerTick = Signal(int)  # seconds remaining until next reminder
-    statsUpdated = Signal(int, int)  # completed count, total ml logged
+    cooldownTick = Signal(int)  # seconds remaining in manual log cooldown
+    statsUpdated = Signal(int, int)  # reminders completed count, total ml logged
     streakUpdated = Signal(object)  # StreakInfo
     goalCelebrated = Signal(str)  # Celebration message
+    intakeChanged = Signal(object)  # LogResult
 
     def __init__(self, config_manager: ConfigManager, parent=None):
         super().__init__(parent)
@@ -57,11 +59,22 @@ class ReminderEngine(QObject):
         self._heartbeat.start()
 
     def _check_daily_date_reset(self) -> None:
-        """Resets today's stats and updates streak continuity if the calendar date changed."""
+        """Resets today's stats and updates streak continuity if calendar date changed."""
         rolled_over = self.streak_tracker.check_rollover()
         if rolled_over:
             self.statsUpdated.emit(0, 0)
-            self.streakUpdated.emit(self.streak_tracker.get_info())
+            info = self.streak_tracker.get_info()
+            self.streakUpdated.emit(info)
+
+    def on_system_wake(self) -> None:
+        """Called upon system resume from sleep or hibernate (WM_POWERBROADCAST)."""
+        logger.info("System wake event received. Re-evaluating date and scheduler...")
+        self._check_daily_date_reset()
+        now = datetime.now()
+        if self._target_time and now >= self._target_time:
+            self._trigger_reminder()
+        else:
+            self.reset_schedule()
 
     def is_in_quiet_hours(self, dt: Optional[datetime] = None) -> bool:
         """Determines if the specified datetime (or now) is within quiet hours."""
@@ -83,14 +96,11 @@ class ReminderEngine(QObject):
             return False
 
         if start_t < end_t:
-            # Same day interval (e.g. 13:00 to 15:00)
             return start_t <= current_time < end_t
         else:
-            # Midnight crossing interval (e.g. 22:00 to 08:00)
             return current_time >= start_t or current_time < end_t
 
     def get_seconds_until_quiet_hours_end(self, dt: Optional[datetime] = None) -> int:
-        """Calculates seconds until quiet hours expire."""
         dt = dt or datetime.now()
         try:
             eh, em = map(int, self.settings.quiet_hours_end.split(":"))
@@ -103,15 +113,10 @@ class ReminderEngine(QObject):
         return max(1, int((target_dt - dt).total_seconds()))
 
     def reset_schedule(self) -> None:
-        """Calculates the next reminder time based on current settings and state."""
+        """Calculates next reminder deadline based on settings and state."""
         self._check_daily_date_reset()
 
-        if self.settings.reminders_paused:
-            self._set_state(ReminderState.PAUSED)
-            self._target_time = None
-            return
-
-        if not self.settings.reminders_enabled:
+        if self.settings.reminders_paused or not self.settings.reminders_enabled:
             self._set_state(ReminderState.PAUSED)
             self._target_time = None
             return
@@ -127,7 +132,7 @@ class ReminderEngine(QObject):
         interval_secs = self.settings.reminder_interval_minutes * 60
         self._target_time = now + timedelta(seconds=interval_secs)
         self._set_state(ReminderState.IDLE)
-        logger.info(f"Scheduled next recurring reminder for: {self._target_time.strftime('%H:%M:%S')}")
+        logger.info(f"Next recurring reminder scheduled for: {self._target_time.strftime('%H:%M:%S')}")
 
     def _set_state(self, new_state: ReminderState) -> None:
         if self.state != new_state:
@@ -136,8 +141,12 @@ class ReminderEngine(QObject):
             self.stateChanged.emit(new_state)
 
     def _on_heartbeat(self) -> None:
-        """Runs every second to evaluate state and time triggers."""
+        """Authoritative 1-second tick: checks rollover, countdowns, and cooldowns."""
         self._check_daily_date_reset()
+
+        # Emit cooldown tick for manual water logging
+        cooldown_rem = self.streak_tracker.get_cooldown_remaining()
+        self.cooldownTick.emit(cooldown_rem)
 
         if self.state == ReminderState.PAUSED or not self.settings.reminders_enabled:
             self.timerTick.emit(-1)
@@ -145,7 +154,7 @@ class ReminderEngine(QObject):
 
         now = datetime.now()
 
-        # If in quiet hours, make sure state reflects it
+        # Check quiet hours transition
         if self.is_in_quiet_hours(now) and self.state in (
             ReminderState.IDLE,
             ReminderState.SNOOZED,
@@ -182,32 +191,63 @@ class ReminderEngine(QObject):
         self.reminderTriggered.emit()
 
     # User response handlers
-    def on_user_drank_water(self, ml: Optional[int] = None) -> None:
-        """User clicked YES or logged water intake."""
-        if self.state != ReminderState.WAITING_FOR_RESPONSE:
-            # Allow manual trigger or celebration even if outside exact window
-            pass
+    def on_user_drank_water(self, ml: Optional[int] = None, from_reminder: bool = False) -> bool:
+        """
+        User clicked YES or logged water intake.
+        If from_reminder is True, strictly validates reminder window (CRIT-01).
+        """
+        if from_reminder and self.state not in (ReminderState.WAITING_FOR_RESPONSE, ReminderState.REMINDER_DUE):
+            logger.warning("on_user_drank_water called from reminder outside response window.")
+            return False
 
         self._check_daily_date_reset()
-        self.settings.today_reminders_completed += 1
-
         amount = ml if (ml is not None and ml > 0) else 250
-        event = self.streak_tracker.record_intake(amount)
-        info = self.streak_tracker.get_info()
+        res = self.streak_tracker.log_water(amount=amount, is_manual=False)
 
         self.statsUpdated.emit(self.settings.today_reminders_completed, self.settings.today_intake_ml)
-        self.streakUpdated.emit(info)
+        self.streakUpdated.emit(res.info)
+        self.intakeChanged.emit(res)
 
-        if event == StreakEvent.GOAL_REACHED_FIRST_TIME:
-            msg = f"Goal Complete! 🔥 You're on a {info.current_streak}-Day Streak!"
-            logger.info(f"Goal reached for the first time today: {msg}")
+        if res.event == StreakEvent.GOAL_REACHED_FIRST_TIME:
+            msg = f"Goal Complete! 🔥 You're on a {res.info.current_streak}-Day Streak!"
             self.goalCelebrated.emit(msg)
 
         # Reset schedule for next recurring interval
         self.reset_schedule()
+        return True
+
+    def log_from_reminder(self, amount: int = 250) -> bool:
+        """Explicit entry point for reminder responses (CRIT-01)."""
+        return self.on_user_drank_water(amount, from_reminder=True)
+
+
+    def log_manual(self, amount: int = 250) -> LogResult:
+        """
+        User clicked YES, I DRANK 💧 manual button on dashboard, companion, or tray.
+        Enforces 30-minute minimum cooldown. Dismisses active reminder if present.
+        """
+        self._check_daily_date_reset()
+        res = self.streak_tracker.log_water(amount=amount, is_manual=True)
+
+        if res.ok:
+            # If an active reminder was waiting, manual drinking satisfies it
+            if self.state == ReminderState.WAITING_FOR_RESPONSE:
+                self._set_state(ReminderState.IDLE)
+
+            self.statsUpdated.emit(self.settings.today_reminders_completed, self.settings.today_intake_ml)
+            self.streakUpdated.emit(res.info)
+            self.intakeChanged.emit(res)
+
+            if res.event in (StreakEvent.GOAL_REACHED_FIRST_TIME, StreakEvent.MILESTONE_REACHED):
+                msg = f"Goal Complete! 🔥 You're on a {res.info.current_streak}-Day Streak!"
+                self.goalCelebrated.emit(msg)
+
+            # Reset next recurring reminder from now
+            self.reset_schedule()
+
+        return res
 
     def get_streak_info(self) -> StreakInfo:
-        """Returns the current validated streak telemetry snapshot."""
         return self.streak_tracker.get_info()
 
     def on_user_snoozed(self, custom_minutes: Optional[int] = None) -> None:
@@ -221,15 +261,23 @@ class ReminderEngine(QObject):
         logger.info(f"Snoozed for {mins} minutes (Target: {self._target_time.strftime('%H:%M:%S')})")
 
     def on_user_declined(self) -> None:
-        """User clicked NO / Not Yet."""
+        """User clicked NO / Not Yet (CRIT-03)."""
         mins = max(1, min(120, self.settings.retry_interval_minutes))
         now = datetime.now()
         self._target_time = now + timedelta(minutes=mins)
         self._set_state(ReminderState.RETRY_SCHEDULED)
         logger.info(f"Retry scheduled in {mins} minutes (Target: {self._target_time.strftime('%H:%M:%S')})")
 
+    def on_user_dismissed(self) -> None:
+        """User closed popup or reminder auto-closed without response (MED-05)."""
+        if self.state == ReminderState.WAITING_FOR_RESPONSE:
+            mins = max(1, min(120, self.settings.retry_interval_minutes))
+            now = datetime.now()
+            self._target_time = now + timedelta(minutes=mins)
+            self._set_state(ReminderState.RETRY_SCHEDULED)
+            logger.info(f"Reminder dismissed without action. Retry scheduled in {mins}m.")
+
     def pause_reminders(self, pause: bool = True) -> None:
-        """Pauses or resumes reminder schedule."""
         self.settings.reminders_paused = pause
         self.config_manager.save()
         if pause:
@@ -239,7 +287,11 @@ class ReminderEngine(QObject):
             self.reset_schedule()
 
     def trigger_now(self) -> None:
-        """Forces an immediate reminder trigger for testing."""
+        """Forces immediate reminder or re-surfaces active reminder (CRIT-04)."""
+        if self.state in (ReminderState.WAITING_FOR_RESPONSE, ReminderState.REMINDER_DUE):
+            logger.info("Remind Me Now called while already active; re-emitting reminderTriggered.")
+            self.reminderTriggered.emit()
+            return
         self._trigger_reminder()
 
     def get_seconds_remaining(self) -> int:

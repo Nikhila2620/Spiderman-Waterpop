@@ -110,6 +110,20 @@ class StreakCardWidget(GlassCard):
         self._set_progress_style(is_completed=False)
         self.content_layout.addWidget(self.progress_bar)
 
+        # Meta row: Total Goal Days & Web Shield Protection
+        meta_row = QHBoxLayout()
+        meta_row.setContentsMargins(0, 4, 0, 0)
+        self.lbl_total_goal_days = QLabel("Total Goals Met: 0 days")
+        self.lbl_total_goal_days.setStyleSheet(f"font-size: 11px; font-weight: 600; color: {TOKENS.TEXT_MUTED};")
+        meta_row.addWidget(self.lbl_total_goal_days)
+
+        meta_row.addStretch()
+
+        self.lbl_shield_status = QLabel("🛡️ Web Shield: Ready")
+        self.lbl_shield_status.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {TOKENS.ACCENT_AQUA};")
+        meta_row.addWidget(self.lbl_shield_status)
+        self.content_layout.addLayout(meta_row)
+
         # 3. Celebration Banner (Subtle flame celebration)
         self.celebration_banner = QFrame()
         self.celebration_banner.setObjectName("celebrationBanner")
@@ -183,6 +197,15 @@ class StreakCardWidget(GlassCard):
         self.lbl_pct.setText(f"{info.progress_percentage}%")
         self.progress_bar.setValue(min(100, info.progress_percentage))
         self._set_progress_style(is_completed=info.is_completed_today)
+
+        # Meta indicators
+        total_days = getattr(info, "goal_days_total", 0)
+        self.lbl_total_goal_days.setText(f"Total Goals Met: {total_days} days")
+        shield_avail = getattr(info, "shield_available", True)
+        shield_txt = "🛡️ Web Shield: Ready" if shield_avail else "🛡️ Web Shield: Used"
+        shield_color = TOKENS.ACCENT_MINT if shield_avail else TOKENS.TEXT_MUTED
+        self.lbl_shield_status.setText(shield_txt)
+        self.lbl_shield_status.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {shield_color};")
 
         # 3. Update status badge and celebration banner
         if info.is_completed_today:

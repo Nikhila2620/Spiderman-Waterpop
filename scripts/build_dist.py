@@ -9,6 +9,8 @@ import zipfile
 import subprocess
 from pathlib import Path
 
+from src.version import VERSION, APP_NAME
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DIST_DIR = ROOT_DIR / "dist"
 BUILD_DIR = ROOT_DIR / "build"
@@ -26,12 +28,12 @@ def run_cmd(cmd, description):
 
 def build_all():
     print("==================================================")
-    print(" Spider-Man Water Buddy — Production Build Suite")
+    print(f" {APP_NAME} v{VERSION} — Production Build Suite")
     print("==================================================")
 
     # 0. Gracefully terminate any running instances
     try:
-        for proc in ["SpiderManWaterBuddy.exe", "uninstall.exe", "SpiderManWaterBuddy-v1.0.0-Setup.exe"]:
+        for proc in ["SpiderManWaterBuddy.exe", "uninstall.exe", f"SpiderManWaterBuddy-v{VERSION}-Setup.exe"]:
             subprocess.run(["taskkill", "/F", "/IM", proc], capture_output=True)
     except Exception:
         pass
@@ -54,7 +56,7 @@ def build_all():
 
     # 4. Generate portable zip archive
     app_folder = DIST_DIR / "SpiderManWaterBuddy"
-    portable_zip = DIST_DIR / "SpiderManWaterBuddy-v1.0.0-Portable.zip"
+    portable_zip = DIST_DIR / f"SpiderManWaterBuddy-v{VERSION}-Portable.zip"
     print(f"\n[BUILD STEP] Creating portable archive: {portable_zip.name}...")
 
     with zipfile.ZipFile(portable_zip, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
@@ -67,14 +69,16 @@ def build_all():
     print(f"[SUCCESS] Created portable zip ({size_mb:.2f} MB).")
 
     # 5. Build onefile setup installer
-    spec_setup = PACKAGING_DIR / "SpiderManWaterBuddy-v1.0.0-Setup.spec"
+    spec_setup = PACKAGING_DIR / f"SpiderManWaterBuddy-v{VERSION}-Setup.spec"
+    if not spec_setup.exists():
+        spec_setup = PACKAGING_DIR / "SpiderManWaterBuddy-Setup.spec"
     run_cmd([sys.executable, "-m", "PyInstaller", "--noconfirm", str(spec_setup)], "Compiling Setup Installer")
 
-    installer_exe = DIST_DIR / "SpiderManWaterBuddy-v1.0.0-Setup.exe"
+    installer_exe = DIST_DIR / f"SpiderManWaterBuddy-v{VERSION}-Setup.exe"
     inst_size_mb = installer_exe.stat().st_size / (1024 * 1024) if installer_exe.exists() else 0
 
     print("\n==================================================")
-    print(" BUILD PIPELINE COMPLETED SUCCESSFULLY!")
+    print(f" BUILD PIPELINE COMPLETED SUCCESSFULLY (v{VERSION})!")
     print(f" 1. Portable Folder:  {app_folder}")
     print(f" 2. Portable Zip:     {portable_zip} ({size_mb:.2f} MB)")
     print(f" 3. Windows Setup:    {installer_exe} ({inst_size_mb:.2f} MB)")

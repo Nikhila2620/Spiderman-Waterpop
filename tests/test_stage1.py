@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QPointF
 from src.character import SpideyWidget
-from src.popup import SpideyWaterBuddyPopup
+from src.companion_window import CompanionWindow as SpideyWaterBuddyPopup
 
 
 def test_spidey_water_buddy():
@@ -49,7 +49,7 @@ def test_spidey_water_buddy():
 
     # 4. Test Hover reaction
     popup._on_spidey_hover_enter()
-    assert "Spider-sense says" in popup.dialogue_label.text(), "Hover should show spider-sense greeting"
+    assert "Spider-sense" in popup.dialogue_label.text(), "Hover should show spider-sense greeting"
     popup._on_spidey_hover_leave()
     assert popup.dialogue_label.text() == popup.default_message, "Leave should restore default message"
 

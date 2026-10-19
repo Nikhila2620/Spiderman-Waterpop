@@ -52,8 +52,11 @@ class DashboardWindow(QWidget):
         self.settings = config_manager.settings
         self.engine = reminder_engine
 
+        self._selected_amount = 250
+        self._chip_buttons = []
+
         self.setObjectName("mainDashboard")
-        self.setWindowTitle("Spider-Man Water Buddy — Aquatic Dashboard & Settings")
+        self.setWindowTitle("Spider-Man Water Buddy v2.0 — Comic Night-City Edition")
         self.setMinimumSize(820, 640)
         self.resize(880, 680)
 
@@ -72,7 +75,7 @@ class DashboardWindow(QWidget):
         top_bar = QFrame()
         top_bar.setStyleSheet(f"""
             QFrame {{
-                background-color: rgba(7, 17, 30, 0.95);
+                background-color: rgba(11, 14, 20, 0.95);
                 border-bottom: 1px solid {TOKENS.BORDER_GLASS};
                 padding: 10px 20px;
             }}
@@ -81,7 +84,7 @@ class DashboardWindow(QWidget):
         top_layout.setContentsMargins(18, 12, 18, 12)
         top_layout.setSpacing(14)
 
-        logo_title = QLabel("🕸️ SPIDER-MAN WATER BUDDY")
+        logo_title = QLabel("🕸️ SPIDER-MAN WATER BUDDY v2.0")
         logo_title.setStyleSheet(f"""
             font-size: 15px;
             font-weight: 900;
@@ -90,13 +93,13 @@ class DashboardWindow(QWidget):
         """)
         top_layout.addWidget(logo_title)
 
-        subtitle_badge = QLabel("AQUATIC LIQUID GLASS")
+        subtitle_badge = QLabel("COMIC NIGHT-CITY EDITION")
         subtitle_badge.setStyleSheet(f"""
             font-size: 10px;
             font-weight: 800;
-            color: {TOKENS.TEXT_MUTED};
-            background-color: rgba(0, 240, 255, 0.08);
-            border: 1px solid rgba(0, 240, 255, 0.2);
+            color: {TOKENS.ACCENT_RED};
+            background-color: rgba(255, 51, 85, 0.12);
+            border: 1px solid rgba(255, 51, 85, 0.3);
             border-radius: 4px;
             padding: 3px 6px;
         """)
@@ -240,28 +243,60 @@ class DashboardWindow(QWidget):
         self.reservoir_widget = LiquidReservoirWidget()
         res_layout.addWidget(self.reservoir_widget, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # Quick Log Buttons
-        quick_box = QHBoxLayout()
-        quick_box.setSpacing(12)
+        # Hero Water Intake Controls & Amount Chips
+        hero_log_box = QVBoxLayout()
+        hero_log_box.setSpacing(10)
 
-        lbl_quick = QLabel("Quick Log:")
-        lbl_quick.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-weight: 700; font-size: 13px;")
-        quick_box.addWidget(lbl_quick)
+        # Chips row
+        chip_box = QHBoxLayout()
+        chip_box.setSpacing(8)
 
-        self.btn_log_250 = QPushButton("💧 +250 ml (Glass)")
-        self.btn_log_250.setProperty("class", "secondaryBtn")
-        self.btn_log_250.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        lbl_chip_prompt = QLabel("Select Intake:")
+        lbl_chip_prompt.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-weight: 700; font-size: 12px;")
+        chip_box.addWidget(lbl_chip_prompt)
+
+        self._chip_buttons = []
+        amounts = [(150, "150 ml (Cup)"), (250, "250 ml (Glass)"), (350, "350 ml (Mug)"), (500, "500 ml (Bottle)")]
+        for amt, label in amounts:
+            chip = QPushButton(label)
+            chip.setProperty("class", "chipBtn")
+            chip.setProperty("amount", amt)
+            chip.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            if amt == self._selected_amount:
+                chip.setProperty("selected", "true")
+            else:
+                chip.setProperty("selected", "false")
+            chip.clicked.connect(lambda chk=False, a=amt: self._select_amount(a))
+            chip_box.addWidget(chip)
+            self._chip_buttons.append(chip)
+
+        chip_box.addStretch()
+        hero_log_box.addLayout(chip_box)
+
+        # Big Hero Manual Drink Button
+        self.btn_hero_drink = QPushButton("💧 YES, I DRANK (250 ml)")
+        self.btn_hero_drink.setProperty("class", "heroDrinkBtn")
+        self.btn_hero_drink.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_hero_drink.clicked.connect(self._on_hero_drink_clicked)
+        hero_log_box.addWidget(self.btn_hero_drink)
+
+        # Cooldown & Spacing Label
+        self.lbl_cooldown_status = QLabel("Ready to log hydration")
+        self.lbl_cooldown_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_cooldown_status.setStyleSheet(f"font-size: 11.5px; font-weight: 600; color: {TOKENS.ACCENT_MINT};")
+        hero_log_box.addWidget(self.lbl_cooldown_status)
+
+        res_layout.addLayout(hero_log_box)
+
+        # Legacy Quick Log Buttons (Kept for compatibility with test suites & quick shortcuts)
+        self.btn_log_250 = QPushButton("💧 +250 ml")
+        self.btn_log_250.setVisible(False)
         self.btn_log_250.clicked.connect(lambda: self._quick_log_water(250))
-        quick_box.addWidget(self.btn_log_250)
-
-        self.btn_log_500 = QPushButton("🌊 +500 ml (Bottle)")
-        self.btn_log_500.setProperty("class", "secondaryBtn")
-        self.btn_log_500.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_log_500 = QPushButton("🌊 +500 ml")
+        self.btn_log_500.setVisible(False)
         self.btn_log_500.clicked.connect(lambda: self._quick_log_water(500))
-        quick_box.addWidget(self.btn_log_500)
-
-        quick_box.addStretch()
-        res_layout.addLayout(quick_box)
+        res_layout.addWidget(self.btn_log_250)
+        res_layout.addWidget(self.btn_log_500)
 
         # Fallback hidden labels for compatibility
         self.lbl_hydro_stats = QLabel("0 / 2000 ml (0%)")
@@ -590,6 +625,47 @@ class DashboardWindow(QWidget):
         self.engine.statsUpdated.connect(self._on_stats_updated)
         self.engine.streakUpdated.connect(self._on_streak_updated)
         self.engine.goalCelebrated.connect(self._on_goal_celebrated)
+        self.engine.cooldownTick.connect(self._on_cooldown_tick)
+
+    def _select_amount(self, amount: int):
+        self._selected_amount = amount
+        for chip in getattr(self, "_chip_buttons", []):
+            is_active = (chip.property("amount") == amount)
+            chip.setProperty("selected", "true" if is_active else "false")
+            chip.style().unpolish(chip)
+            chip.style().polish(chip)
+        rem = self.engine.streak_tracker.get_cooldown_remaining()
+        if rem <= 0 and hasattr(self, "btn_hero_drink"):
+            self.btn_hero_drink.setText(f"💧 YES, I DRANK ({amount} ml)")
+
+    def _on_hero_drink_clicked(self):
+        res = self.engine.log_manual(self._selected_amount)
+        if res.ok:
+            self.status_save_label.setText(f"Logged +{res.added_ml} ml of water! Hero status: Hydrated! 💧")
+            self._on_cooldown_tick(res.remaining_seconds)
+        else:
+            mins, secs = divmod(res.remaining_seconds, 60)
+            self.status_save_label.setText(f"Cooldown active: please wait {mins}m {secs:02d}s before logging again.")
+            self._on_cooldown_tick(res.remaining_seconds)
+
+    def _on_cooldown_tick(self, rem_secs: int):
+        if not hasattr(self, "btn_hero_drink"):
+            return
+        if rem_secs > 0:
+            mins, secs = divmod(rem_secs, 60)
+            self.btn_hero_drink.setEnabled(False)
+            self.btn_hero_drink.setText(f"⏳ Next log in {mins:02d}:{secs:02d}")
+            self.lbl_cooldown_status.setText(f"Cooldown active: {mins}m {secs:02d}s remaining (minimum 30m spacing)")
+            self.lbl_cooldown_status.setStyleSheet(f"font-size: 11.5px; font-weight: 700; color: {TOKENS.STATUS_WARNING};")
+            for chip in getattr(self, "_chip_buttons", []):
+                chip.setEnabled(False)
+        else:
+            self.btn_hero_drink.setEnabled(True)
+            self.btn_hero_drink.setText(f"💧 YES, I DRANK ({self._selected_amount} ml)")
+            self.lbl_cooldown_status.setText("Ready to log hydration")
+            self.lbl_cooldown_status.setStyleSheet(f"font-size: 11.5px; font-weight: 600; color: {TOKENS.ACCENT_MINT};")
+            for chip in getattr(self, "_chip_buttons", []):
+                chip.setEnabled(True)
 
     def _on_streak_updated(self, info: StreakInfo):
         if hasattr(self, "streak_card"):
@@ -674,9 +750,21 @@ class DashboardWindow(QWidget):
         # Update animated fluid reservoir
         self.reservoir_widget.set_values(ml, goal)
 
-    def _quick_log_water(self, ml: int):
-        self.engine.on_user_drank_water(ml)
-        self.status_save_label.setText(f"Logged +{ml} ml of water! Great job staying hydrated 💧")
+    def _quick_log_water(self, ml: int, is_manual: bool = False):
+        if is_manual:
+            res = self.engine.log_manual(ml)
+            if res.ok:
+                self.status_save_label.setText(f"Logged +{res.added_ml} ml of water! Hero status: Hydrated! 💧")
+                self._on_cooldown_tick(res.remaining_seconds)
+            else:
+                mins, secs = divmod(res.remaining_seconds, 60)
+                self.status_save_label.setText(f"Cooldown active: please wait {mins}m {secs:02d}s before logging again.")
+                self._on_cooldown_tick(res.remaining_seconds)
+            return res
+        else:
+            self.engine.on_user_drank_water(ml)
+            self.status_save_label.setText(f"Logged +{ml} ml of water! Great job staying hydrated 💧")
+            return None
 
     def _on_toggle_pause_clicked(self):
         new_state = not self.settings.reminders_paused
@@ -748,6 +836,9 @@ class DashboardWindow(QWidget):
         self._on_stats_updated(s.today_reminders_completed, s.today_intake_ml)
         if hasattr(self, "streak_card"):
             self.streak_card.update_info(self.engine.get_streak_info())
+        if hasattr(self, "_on_cooldown_tick"):
+            rem = self.engine.streak_tracker.get_cooldown_remaining()
+            self._on_cooldown_tick(rem)
 
     def save_and_apply(self):
         s = self.settings

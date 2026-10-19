@@ -16,7 +16,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QTimer, QPointF
-from src.popup import SpideyWaterBuddyPopup
+from src.companion_window import CompanionWindow as SpideyWaterBuddyPopup
 from src.character import SpideyWidget
 
 

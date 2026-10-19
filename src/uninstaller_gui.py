@@ -123,11 +123,24 @@ class UninstallerDialog(QDialog):
                 "Spider-Man Water Buddy has been successfully removed from your computer.",
             )
 
-            # 6. Schedule self-deletion of installation directory with retries
-            install_path = str(self.install_dir)
-            cmd = f'cmd /c "for /l %i in (1,1,5) do ( ping 127.0.0.1 -n 2 > nul & rmdir /s /q \"{install_path}\" & if not exist \"{install_path}\" exit )"'
-            import subprocess
-            subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            # 6. Schedule self-deletion of installation directory with safety validation
+            resolved_install = self.install_dir.resolve()
+            win_dir = Path(os.environ.get("WINDIR", "C:\\Windows")).resolve()
+            is_safe = (
+                resolved_install.exists()
+                and resolved_install.is_dir()
+                and resolved_install.parent != resolved_install
+                and not resolved_install.is_relative_to(win_dir)
+                and "spidermanwaterbuddy" in resolved_install.name.lower()
+            )
+
+            if is_safe:
+                install_path = str(resolved_install).replace('"', '')
+                cmd = f'cmd /c "for /l %i in (1,1,5) do ( ping 127.0.0.1 -n 2 > nul & rmdir /s /q \"{install_path}\" & if not exist \"{install_path}\" exit )"'
+                import subprocess
+                subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            else:
+                print(f"[SECURITY] Skipped rmdir on invalid or unsafe install_dir: {resolved_install}")
 
             self.accept()
             QApplication.quit()

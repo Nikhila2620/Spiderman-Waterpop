@@ -9,9 +9,11 @@ import zipfile
 import subprocess
 from pathlib import Path
 
+ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT_DIR))
+
 from src.version import VERSION, APP_NAME
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
 DIST_DIR = ROOT_DIR / "dist"
 BUILD_DIR = ROOT_DIR / "build"
 PACKAGING_DIR = ROOT_DIR / "packaging"

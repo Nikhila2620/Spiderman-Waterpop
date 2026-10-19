@@ -104,9 +104,9 @@ class CompanionWindow(QWidget):
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
 
-        badge_text = f"🕸️ {self.settings.companion_name.upper()} WATER BUDDY"
+        badge_text = f"E.D.I.T.H. // {self.settings.companion_name.upper()} PROTOCOL"
         self.badge = QLabel(badge_text)
-        self.badge.setStyleSheet(f"color: {TOKENS.ACCENT_AQUA}; font-size: 10px; font-weight: 800; letter-spacing: 1px;")
+        self.badge.setStyleSheet(f"color: #ffffff; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; font-family: 'Cascadia Code', monospace;")
         header.addWidget(self.badge)
         header.addStretch()
 
@@ -123,8 +123,8 @@ class CompanionWindow(QWidget):
                 padding: 0;
             }}
             QPushButton:hover {{
-                color: {TOKENS.ACCENT_AQUA};
-                background-color: rgba(0, 240, 255, 0.15);
+                color: #ffffff;
+                background-color: rgba(255, 255, 255, 0.15);
                 border-radius: 10px;
             }}
         """)
@@ -137,13 +137,13 @@ class CompanionWindow(QWidget):
         self.dialogue_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.dialogue_label.setWordWrap(True)
         self.dialogue_label.setStyleSheet(f"""
-            color: {TOKENS.TEXT_PRIMARY};
+            color: #ffffff;
             font-size: 12px;
             font-weight: 600;
-            padding: 7px 10px;
-            background-color: rgba(12, 26, 46, 0.75);
-            border-radius: 8px;
-            border: 1px solid rgba(0, 240, 255, 0.18);
+            padding: 8px 12px;
+            background-color: #05070a;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
         """)
         card_layout.addWidget(self.dialogue_label)
 
@@ -153,42 +153,46 @@ class CompanionWindow(QWidget):
         action_layout.setContentsMargins(0, 2, 0, 0)
         action_layout.setSpacing(8)
 
-        self.btn_yes = QPushButton("💧 YES, DRANK!")
+        self.btn_yes = QPushButton("YES, DRANK!")
         self.btn_yes.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_yes.setStyleSheet(f"""
             QPushButton {{
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #00c880, stop: 1 {TOKENS.ACCENT_MINT});
-                color: #041a12;
+                background-color: #ffffff;
+                color: #000000;
                 font-size: 11px;
                 font-weight: 800;
-                border: 1px solid {TOKENS.ACCENT_AQUA};
-                border-radius: 8px;
+                letter-spacing: 0.5px;
+                border: 1px solid #ffffff;
+                border-radius: 6px;
+                padding: 7px 12px;
             }}
             QPushButton:hover {{
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 {TOKENS.ACCENT_MINT}, stop: 1 #4dffb8);
+                background-color: #e2e8f0;
             }}
-            QPushButton:pressed {{ background-color: #009966; }}
+            QPushButton:pressed {{ background-color: #cbd5e1; }}
         """)
         self.btn_yes.clicked.connect(self._on_yes_clicked)
         action_layout.addWidget(self.btn_yes)
 
-        self.btn_no = QPushButton("⏳ NOT YET")
+        self.btn_no = QPushButton("NOT YET")
         self.btn_no.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_no.setStyleSheet(f"""
             QPushButton {{
-                background: rgba(12, 26, 46, 0.85);
+                background-color: #05070a;
                 color: {TOKENS.TEXT_SECONDARY};
                 font-size: 11px;
                 font-weight: 700;
-                border: 1px solid rgba(0, 240, 255, 0.25);
-                border-radius: 8px;
+                letter-spacing: 0.5px;
+                border: 1px solid rgba(255, 255, 255, 0.35);
+                border-radius: 6px;
+                padding: 7px 12px;
             }}
             QPushButton:hover {{
-                background: rgba(16, 36, 64, 0.95);
-                color: {TOKENS.TEXT_PRIMARY};
-                border-color: rgba(0, 240, 255, 0.55);
+                background-color: rgba(255, 255, 255, 0.10);
+                color: #ffffff;
+                border-color: #ffffff;
             }}
-            QPushButton:pressed {{ background-color: #071526; }}
+            QPushButton:pressed {{ background-color: #000000; }}
         """)
         self.btn_no.clicked.connect(self._on_no_clicked)
         action_layout.addWidget(self.btn_no)

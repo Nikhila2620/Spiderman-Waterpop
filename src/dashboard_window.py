@@ -56,9 +56,9 @@ class DashboardWindow(QWidget):
         self._chip_buttons = []
 
         self.setObjectName("mainDashboard")
-        self.setWindowTitle("Spider-Man Water Buddy v2.0 — Comic Night-City Edition")
-        self.setMinimumSize(820, 640)
-        self.resize(880, 680)
+        self.setWindowTitle("Spider-Man Water Buddy v2.0 — Stark Tech E.D.I.T.H. HUD")
+        self.setMinimumSize(880, 680)
+        self.resize(960, 740)
 
         self._init_ui()
         self._connect_engine_signals()
@@ -84,24 +84,27 @@ class DashboardWindow(QWidget):
         top_layout.setContentsMargins(18, 12, 18, 12)
         top_layout.setSpacing(14)
 
-        logo_title = QLabel("🕸️ SPIDER-MAN WATER BUDDY v2.0")
+        logo_title = QLabel("🕸️ STARK INDUSTRIES // E.D.I.T.H.")
         logo_title.setStyleSheet(f"""
-            font-size: 15px;
+            font-size: 14.5px;
             font-weight: 900;
-            color: {TOKENS.ACCENT_AQUA};
+            color: #ffffff;
             letter-spacing: 1.5px;
+            font-family: 'Cascadia Code', 'Segoe UI', monospace;
         """)
         top_layout.addWidget(logo_title)
 
-        subtitle_badge = QLabel("COMIC NIGHT-CITY EDITION")
+        subtitle_badge = QLabel("TACTICAL HUD PROTOCOL")
         subtitle_badge.setStyleSheet(f"""
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 800;
-            color: {TOKENS.ACCENT_RED};
-            background-color: rgba(255, 51, 85, 0.12);
-            border: 1px solid rgba(255, 51, 85, 0.3);
-            border-radius: 4px;
+            color: #000000;
+            background-color: #ffffff;
+            border: 1px solid #ffffff;
+            border-radius: 3px;
             padding: 3px 6px;
+            letter-spacing: 1px;
+            font-family: 'Cascadia Code', monospace;
         """)
         top_layout.addWidget(subtitle_badge)
         top_layout.addStretch()
@@ -129,11 +132,11 @@ class DashboardWindow(QWidget):
 
         self.nav_buttons = []
         nav_items = [
-            ("📊  Dashboard", 0),
-            ("⚙️  General", 1),
-            ("⏱️  Reminders", 2),
-            ("🎨  Appearance", 3),
-            ("🛠️  Advanced", 4),
+            ("[01]  DASHBOARD", 0),
+            ("[02]  GENERAL", 1),
+            ("[03]  REMINDERS", 2),
+            ("[04]  APPEARANCE", 3),
+            ("[05]  ADVANCED", 4),
         ]
 
         self.nav_group = QButtonGroup(self)
@@ -206,6 +209,7 @@ class DashboardWindow(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         widget = QWidget()
         layout = QVBoxLayout(widget)
@@ -216,18 +220,18 @@ class DashboardWindow(QWidget):
         telemetry_row = QHBoxLayout()
         telemetry_row.setSpacing(14)
 
-        card_status = GlassCard("Companion Status", "Current desktop presence")
+        card_status = GlassCard("SYSTEM STATUS", "Active desktop HUD presence")
         cs_box = QHBoxLayout()
-        self.lbl_companion_status = QLabel("🟢 ACTIVE")
-        self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.STATUS_SUCCESS};")
+        self.lbl_companion_status = QLabel("ONLINE // CALIBRATED")
+        self.lbl_companion_status.setStyleSheet("font-size: 15px; font-weight: 800; color: #00f0ff; font-family: 'Cascadia Code', monospace;")
         cs_box.addWidget(self.lbl_companion_status)
         card_status.content_layout.addLayout(cs_box)
         telemetry_row.addWidget(card_status)
 
-        self.card_timer = GlassCard("Next Reminder", "Countdown to hydration prompt")
+        self.card_timer = GlassCard("NEXT PROTOCOL REMINDER", "Countdown to hydration prompt")
         ct_box = QHBoxLayout()
         self.lbl_countdown = QLabel("--:--")
-        self.lbl_countdown.setStyleSheet(f"font-size: 24px; font-weight: 900; color: {TOKENS.ACCENT_AQUA};")
+        self.lbl_countdown.setStyleSheet("font-size: 24px; font-weight: 900; color: #ffffff; font-family: 'Cascadia Code', monospace;")
         ct_box.addWidget(self.lbl_countdown)
         self.card_timer.content_layout.addLayout(ct_box)
         telemetry_row.addWidget(self.card_timer)
@@ -235,7 +239,7 @@ class DashboardWindow(QWidget):
         layout.addLayout(telemetry_row)
 
         # 2. Main Fluid Hydration Reservoir Card
-        reservoir_card = GlassCard("Daily Hydration Reservoir", "Live simulated fluid dynamics and progress tracking")
+        reservoir_card = GlassCard("STARK TACTICAL RETICLE", "E.D.I.T.H. Biometric Targeting & Hydration Telemetry")
         res_layout = QVBoxLayout()
         res_layout.setSpacing(14)
 
@@ -251,12 +255,12 @@ class DashboardWindow(QWidget):
         chip_box = QHBoxLayout()
         chip_box.setSpacing(8)
 
-        lbl_chip_prompt = QLabel("Select Intake:")
-        lbl_chip_prompt.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-weight: 700; font-size: 12px;")
+        lbl_chip_prompt = QLabel("TARGET DOSE:")
+        lbl_chip_prompt.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-weight: 800; font-size: 11px; font-family: 'Cascadia Code', monospace;")
         chip_box.addWidget(lbl_chip_prompt)
 
         self._chip_buttons = []
-        amounts = [(150, "150 ml (Cup)"), (250, "250 ml (Glass)"), (350, "350 ml (Mug)"), (500, "500 ml (Bottle)")]
+        amounts = [(150, "[ 150 ml ]"), (250, "[ 250 ml ]"), (350, "[ 350 ml ]"), (500, "[ 500 ml ]")]
         for amt, label in amounts:
             chip = QPushButton(label)
             chip.setProperty("class", "chipBtn")
@@ -274,7 +278,7 @@ class DashboardWindow(QWidget):
         hero_log_box.addLayout(chip_box)
 
         # Big Hero Manual Drink Button
-        self.btn_hero_drink = QPushButton("💧 YES, I DRANK (250 ml)")
+        self.btn_hero_drink = QPushButton("💧 [ +250 ml ] LOG DOSE")
         self.btn_hero_drink.setProperty("class", "heroDrinkBtn")
         self.btn_hero_drink.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_hero_drink.clicked.connect(self._on_hero_drink_clicked)
@@ -334,6 +338,66 @@ class DashboardWindow(QWidget):
         ctrl_layout.addStretch()
         ctrl_card.content_layout.addLayout(ctrl_layout)
         layout.addWidget(ctrl_card)
+
+        # 5. Stark Tech [ SYSTEM INDEX ] HUD Telemetry Box (matching the reference HUD!)
+        hud_index_card = GlassCard("[ SYSTEM INDEX ]", "Tactical telemetry and sensor diagnostics")
+        hud_grid = QHBoxLayout()
+        hud_grid.setSpacing(10)
+
+        # Telemetry item 1: WEB STATUS
+        box_web = QFrame()
+        box_web.setStyleSheet("background: #05070a; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 4px; padding: 6px;")
+        bw_layout = QVBoxLayout(box_web)
+        bw_layout.setContentsMargins(6, 4, 6, 4)
+        bw_title = QLabel("WEB-FLUID: CALIBRATED")
+        bw_title.setStyleSheet("color: #ffffff; font-weight: 800; font-size: 10px; font-family: 'Cascadia Code', monospace;")
+        bw_desc = QLabel("Multi-point hydration sensor active")
+        bw_desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 9.5px;")
+        bw_layout.addWidget(bw_title)
+        bw_layout.addWidget(bw_desc)
+        hud_grid.addWidget(box_web)
+
+        # Telemetry item 2: TARGETING
+        box_targ = QFrame()
+        box_targ.setStyleSheet("background: #05070a; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 4px; padding: 6px;")
+        bt_layout = QVBoxLayout(box_targ)
+        bt_layout.setContentsMargins(6, 4, 6, 4)
+        bt_title = QLabel("TARGETING: 0 SELECTED")
+        bt_title.setStyleSheet("color: #ffffff; font-weight: 800; font-size: 10px; font-family: 'Cascadia Code', monospace;")
+        bt_desc = QLabel("Targeting system operational")
+        bt_desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 9.5px;")
+        bt_layout.addWidget(bt_title)
+        bt_layout.addWidget(bt_desc)
+        hud_grid.addWidget(box_targ)
+
+        # Telemetry item 3: NET-MATH
+        box_math = QFrame()
+        box_math.setStyleSheet("background: #05070a; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 4px; padding: 6px;")
+        bm_layout = QVBoxLayout(box_math)
+        bm_layout.setContentsMargins(6, 4, 6, 4)
+        bm_title = QLabel("NET-MATH: ACCURATE")
+        bm_title.setStyleSheet("color: #ffffff; font-weight: 800; font-size: 10px; font-family: 'Cascadia Code', monospace;")
+        bm_desc = QLabel("Streak algorithm & atomic storage")
+        bm_desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 9.5px;")
+        bm_layout.addWidget(bm_title)
+        bm_layout.addWidget(bm_desc)
+        hud_grid.addWidget(box_math)
+
+        # Telemetry item 4: E.D.I.T.H.
+        box_edith = QFrame()
+        box_edith.setStyleSheet("background: #05070a; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 4px; padding: 6px;")
+        be_layout = QVBoxLayout(box_edith)
+        be_layout.setContentsMargins(6, 4, 6, 4)
+        be_title = QLabel("E.D.I.T.H. PROTOCOL")
+        be_title.setStyleSheet("color: #00f0ff; font-weight: 800; font-size: 10px; font-family: 'Cascadia Code', monospace;")
+        be_desc = QLabel("Desktop companion online")
+        be_desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 9.5px;")
+        be_layout.addWidget(be_title)
+        be_layout.addWidget(be_desc)
+        hud_grid.addWidget(box_edith)
+
+        hud_index_card.content_layout.addLayout(hud_grid)
+        layout.addWidget(hud_index_card)
 
         layout.addStretch()
         scroll.setWidget(widget)

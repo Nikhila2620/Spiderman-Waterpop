@@ -106,12 +106,13 @@ def main():
 
     controller = SpiderManWaterBuddyApp(app)
 
-    # Transient runtime flags without permanently mutating saved settings
+    # Transient runtime flags: standard launch opens Dashboard immediately
     minimized_override = False
-    show_dashboard_flag = False
+    show_dashboard_flag = True
     if "--minimized" in sys.argv:
         logger.info("Launched with --minimized flag (Windows Startup).")
         minimized_override = True
+        show_dashboard_flag = False
     if "--dashboard" in sys.argv:
         show_dashboard_flag = True
 

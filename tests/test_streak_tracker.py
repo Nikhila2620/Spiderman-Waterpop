@@ -206,3 +206,50 @@ def test_input_validation_rejects_negative_or_zero_intake():
         assert tracker.record_intake(0) == StreakEvent.IGNORED
         assert tracker.record_intake(-250) == StreakEvent.IGNORED
         assert tracker.get_info().today_intake_ml == 0
+
+
+def test_web_shield_protects_single_missed_day():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cm = ConfigManager(custom_path=Path(tmpdir) / "settings.json")
+        t0 = date(2026, 10, 1)
+        tracker = StreakTracker(cm, current_date=t0)
+
+        # Day 1: reach goal
+        res = tracker.log_water(2000, is_manual=False, current_date=t0)
+        assert res.info.current_streak == 1
+
+        # Enable Web Shield
+        cm.settings.shield_available = True
+        cm.save()
+
+        # Day 2: skipped completely
+        # Day 3: rollover check
+        t2 = date(2026, 10, 3)
+        tracker.check_rollover(current_date=t2)
+
+        # Shield should have preserved streak=1
+        info = tracker.get_info(current_date=t2)
+        assert info.current_streak == 1
+        assert cm.settings.shield_available is False
+        assert cm.settings.shield_last_used == date(2026, 10, 2).isoformat()
+
+
+def test_web_shield_does_not_protect_two_missed_days():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cm = ConfigManager(custom_path=Path(tmpdir) / "settings.json")
+        t0 = date(2026, 10, 1)
+        tracker = StreakTracker(cm, current_date=t0)
+
+        # Day 1: reach goal
+        res = tracker.log_water(2000, is_manual=False, current_date=t0)
+        assert res.info.current_streak == 1
+
+        cm.settings.shield_available = True
+        cm.save()
+
+        # Day 2 & 3 skipped -> Day 4
+        t3 = date(2026, 10, 4)
+        tracker.check_rollover(current_date=t3)
+
+        info = tracker.get_info(current_date=t3)
+        assert info.current_streak == 0

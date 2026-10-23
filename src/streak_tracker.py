@@ -168,6 +168,7 @@ class StreakTracker:
                 logger.info(f"Web Shield activated! Preserved streak of {self.settings.streak_current} days.")
                 self.settings.shield_available = False
                 self.settings.shield_last_used = yesterday_str
+                self.settings.streak_last_completed_date = yesterday_str
             else:
                 if self.settings.streak_current > 0:
                     logger.info(f"Missed days detected. Streak reset from {self.settings.streak_current} to 0.")

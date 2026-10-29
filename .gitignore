@@ -6,3 +6,10 @@ build/
 .pytest_cache/
 *.tmp
 *.bak
+*.log
+*.zip
+.env
+.vscode/
+.idea/
+*.egg-info/
+.installed_shortcuts

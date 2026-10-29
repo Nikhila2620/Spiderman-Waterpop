@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spiderman-waterpop"
+version = "2.0.0"
+description = "A friendly neighborhood hydration tracker and desktop companion inspired by Spider-Man."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Antigravity Community" }
+]
+keywords = ["hydration", "tracker", "desktop", "pyside6", "qt6", "spiderman"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: Microsoft :: Windows",
+    "Environment :: Win32 (MS Windows)",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "PySide6>=6.7.0,<7.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-qt>=4.4.0",
+    "pytest-mock>=3.14.0",
+    "Pillow>=10.0.0",
+    "pyinstaller>=6.5.0",
+]
+
+[project.scripts]
+spiderman-waterpop = "run:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

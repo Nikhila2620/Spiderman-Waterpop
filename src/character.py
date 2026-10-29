@@ -51,7 +51,7 @@ class SpideyWidget(QWidget):
     hoverLeft = Signal()
     animationFinished = Signal()
 
-    def __init__(self, parent=None, width=260, height=325):
+    def __init__(self, parent=None, width=460, height=420):
         super().__init__(parent)
         self.setFixedSize(width, height)
         self.setMouseTracking(True)
@@ -219,7 +219,7 @@ class SpideyWidget(QWidget):
     def set_character_scale(self, scale: float):
         """Sets character rendering scale (0.75x to 1.5x) with proportional container buffer."""
         self._character_scale = max(0.75, min(1.5, float(scale)))
-        self.setFixedSize(int(260 * self._character_scale), int(325 * self._character_scale))
+        self.setFixedSize(int(460 * self._character_scale), int(420 * self._character_scale))
         self.update()
 
     def set_animation_enabled(self, enabled: bool):
@@ -645,8 +645,12 @@ class SpideyWidget(QWidget):
     def mouseMoveEvent(self, event):
         if self._is_pulling and self._drag_start is not None:
             delta = event.position() - self._drag_start
-            clamped_x = max(-25.0, min(25.0, delta.x() * 0.5))
-            clamped_y = max(-5.0, min(55.0, delta.y() * 0.5))
+            # Generous drag range within 460px canvas with safety margin (zero edge clipping)
+            clamped_x = max(-75.0, min(75.0, delta.x() * 0.75))
+            clamped_y = max(-10.0, min(120.0, delta.y() * 0.75))
+            # Smooth dynamic tilt proportional to displacement angle (fluid 270-degree range without cutoff)
+            pull_angle = math.degrees(math.atan2(clamped_x, max(40.0, clamped_y + 50.0)))
+            self._body_tilt = -pull_angle * 0.45
             self.set_pull_offset(QPointF(clamped_x, clamped_y))
             event.accept()
 
@@ -655,10 +659,14 @@ class SpideyWidget(QWidget):
             self._is_pulling = False
             self._drag_start = None
 
+            # Slingshot elastic recoil
+            self._recoil_anim.setDuration(800)
             self._recoil_anim.setStartValue(self._pull_offset)
             self._recoil_anim.setEndValue(QPointF(0.0, 0.0))
             self._recoil_anim.start()
 
+            self._body_tilt = 0.0
+            self.update()
             self.clicked.emit()
             event.accept()
 
@@ -684,14 +692,17 @@ class SpideyWidget(QWidget):
 
         char_rect = self._get_char_rect()
 
-        # Dynamic hand grip point where Spidey holds the web strand
+        # Dynamic top attachment point of Spidey's web strand (top of feet in image)
         total_dx = self._swing_x + self._pull_offset.x()
         total_dy = self._swing_y + self._pull_offset.y()
-        hand_x = anchor_x + total_dx
-        hand_y = anchor_y + 45.0 + total_dy
+        top_web_x = anchor_x + total_dx
+        top_web_y = anchor_y + total_dy
 
-        # 1. Draw Dynamic Silk Web Strand with Realistic Catenary Arc
-        self._paint_web_strand(painter, anchor_x, anchor_y, hand_x, hand_y, total_dx)
+        # 1. Connect Stretched Elastic Silk Web Strand only when Spidey is displaced downward
+        # (When total_dy <= 3.0, Spidey's rendered image already touches the ceiling - no second web line)
+        if total_dy > 3.0:
+            tilt_rad = math.radians(self._swing_angle + self._body_tilt)
+            self._paint_web_strand(painter, anchor_x, anchor_y, top_web_x, top_web_y, total_dx, tilt_rad)
 
         # 2. Draw Comic Speed Action Lines during high-velocity swing
         if abs(self._swing_angle) > 12.0 or abs(self._swing_x) > 16.0:
@@ -711,33 +722,40 @@ class SpideyWidget(QWidget):
             if renderer and renderer.isValid():
                 renderer.render(painter, char_rect)
 
-        # 5. Overlays (Hover Spider-Sense)
-        if self._state == self.STATE_HOVER:
-            self._paint_hover_overlay(painter, char_rect)
+        # 5. Spider-Verse Electric Squiggle Spider-Sense Overlay (Hover / Alert)
+        if self._state == self.STATE_HOVER or self._celebration_progress > 0.01:
+            self._paint_spider_verse_squiggles(painter, char_rect)
 
         painter.restore()
 
-        # 6. Global Canvas Overlays: Victory Celebration Bursts & Disappointment Sweat
+        # 6. Global Canvas Overlays: Celebratory Party Bursts & Disappointment Sweat
         if self._celebration_progress > 0.01:
-            self._paint_victory_bursts(painter, char_rect, hand_x, hand_y)
+            self._paint_victory_bursts(painter, char_rect, anchor_x + total_dx, anchor_y + total_dy)
         elif self._disappointment_progress > 0.01:
             self._paint_disappointment_overlay(painter, char_rect, total_dx, total_dy)
 
-    def _paint_web_strand(self, painter: QPainter, ax: float, ay: float, hx: float, hy: float, dx: float):
-        """Renders silk web strand with glowing tension sheath and catenary curve."""
+    def _paint_web_strand(self, painter: QPainter, ax: float, ay: float, hx: float, hy: float, dx: float, tilt_rad: float):
+        """Renders silk web strand connecting ceiling anchor to Spidey's top web with smooth tangent continuity."""
         path = QPainterPath()
         path.moveTo(ax, ay)
-        # Physics curve: slight parabolic flex based on horizontal displacement
-        ctrl_x = (ax + hx) / 2.0 - (dx * 0.12)
-        ctrl_y = (ay + hy) / 2.0
-        path.quadTo(ctrl_x, ctrl_y, hx, hy)
+        
+        # Smooth cubic Bezier curve:
+        # At (ax, ay), the web leaves the ceiling going straight down.
+        # At (hx, hy), the web enters Spidey's image matching the rotated body tilt vector.
+        dist = math.hypot(hx - ax, hy - ay)
+        c1_x = ax
+        c1_y = ay + dist * 0.35
+
+        c2_x = hx - math.sin(tilt_rad) * (dist * 0.35)
+        c2_y = hy - math.cos(tilt_rad) * (dist * 0.35)
+        path.cubicTo(c1_x, c1_y, c2_x, c2_y, hx, hy)
 
         # Outer soft silk glow
-        glow_pen = QPen(QColor(0, 240, 255, 65), 3.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        glow_pen = QPen(QColor(0, 240, 255, 60), 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
         painter.strokePath(path, glow_pen)
 
-        # High-contrast crisp white core
-        core_pen = QPen(QColor(255, 255, 255, 240), 2.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        # Crisp white core
+        core_pen = QPen(QColor(255, 255, 255, 230), 1.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
         painter.strokePath(path, core_pen)
 
     def _paint_action_lines(self, painter: QPainter, char_rect: QRectF, anchor_x: float, dx: float, dy: float):
@@ -756,20 +774,92 @@ class SpideyWidget(QWidget):
         painter.drawArc(int(arc_cx - 30), int(base_y + 15), 60, 45, int(-direction * 30 * 16), 70 * 16)
         painter.restore()
 
+    def _paint_spider_verse_squiggles(self, painter: QPainter, char_rect: QRectF):
+        """
+        Renders authentic Spider-Verse comic electric squiggles around Spidey's mask:
+        Wavy zigzag lightning bolts radiating outward from his mask crown/temples with dual-tone
+        chromatic aberration (Electric Cyan #00f0ff offset and Neon Magenta #ff1493 core).
+        """
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Precise head center from 3D model render (upside-down hanging posture)
+        head_cx = char_rect.left() + char_rect.width() * 0.531
+        head_cy = char_rect.top() + char_rect.height() * 0.760
+        scale = self._character_scale
+
+        # Outward directional squiggle rays radiating around Spidey's mask crown and temples
+        angles_deg = [45.0, 68.0, 90.0, 112.0, 135.0]
+        
+        for idx, deg in enumerate(angles_deg):
+            rad = math.radians(deg)
+            cos_a = math.cos(rad)
+            sin_a = math.sin(rad)
+            # Perpendicular vector for wave/zigzag kinks
+            perp_x = -sin_a
+            perp_y = cos_a
+
+            r_base = 22.0 * scale
+            r_len = (26.0 + (idx % 2) * 8.0) * scale
+
+            # Alternating wave flip
+            kink_sign = 1.0 if idx % 2 == 0 else -1.0
+            k1 = 6.0 * kink_sign * scale
+            k2 = -5.0 * kink_sign * scale
+            k3 = 4.0 * kink_sign * scale
+
+            p0 = QPointF(head_cx + cos_a * r_base, head_cy + sin_a * r_base)
+            p1 = QPointF(head_cx + cos_a * (r_base + r_len * 0.3) + perp_x * k1,
+                         head_cy + sin_a * (r_base + r_len * 0.3) + perp_y * k1)
+            p2 = QPointF(head_cx + cos_a * (r_base + r_len * 0.6) + perp_x * k2,
+                         head_cy + sin_a * (r_base + r_len * 0.6) + perp_y * k2)
+            p3 = QPointF(head_cx + cos_a * (r_base + r_len * 0.85) + perp_x * k3,
+                         head_cy + sin_a * (r_base + r_len * 0.85) + perp_y * k3)
+            p4 = QPointF(head_cx + cos_a * (r_base + r_len), head_cy + sin_a * (r_base + r_len))
+
+            path = QPainterPath()
+            path.moveTo(p0)
+            path.cubicTo(p1, p2, p3)
+            path.lineTo(p4)
+
+            # Pass 1: Chromatic Cyan Shift Underlay (#00f0ff)
+            cyan_pen = QPen(QColor("#00f0ff"), 2.2 * scale, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+            painter.save()
+            painter.translate(-1.4 * scale, 1.2 * scale)
+            painter.setPen(cyan_pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPath(path)
+            painter.restore()
+
+            # Pass 2: Vibrant Neon Magenta Core (#ff1493)
+            magenta_pen = QPen(QColor("#ff1493"), 2.6 * scale, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+            painter.setPen(magenta_pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPath(path)
+
+            # Comic energy spark dot at tip
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor("#ffffff"))
+            painter.drawEllipse(p4, 1.8 * scale, 1.8 * scale)
+
+            # Halftone comic dot near ray base
+            dot_dist = r_base + 6.0 * scale
+            dot_pt = QPointF(head_cx + cos_a * dot_dist + perp_x * (k1 * 0.5),
+                             head_cy + sin_a * dot_dist + perp_y * (k1 * 0.5))
+            painter.setBrush(QColor(0, 240, 255, 180))
+            painter.drawEllipse(dot_pt, 1.4 * scale, 1.4 * scale)
+
+        painter.restore()
+
     def _paint_hover_overlay(self, painter: QPainter, char_rect: QRectF):
-        """Crimson spider-sense tingling aura around mask."""
-        pen = QPen(QColor("#f43f5e"), 2.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        head_cx = char_rect.center().x()
-        head_cy = char_rect.top() + char_rect.height() * 0.85
-        painter.drawArc(int(head_cx - 40), int(head_cy - 30), 80, 60, 30 * 16, 120 * 16)
-        painter.drawArc(int(head_cx - 48), int(head_cy - 36), 96, 72, 40 * 16, 100 * 16)
+        """Backward-compatibility alias pointing directly to Spider-Verse squiggles."""
+        self._paint_spider_verse_squiggles(painter, char_rect)
 
     def _paint_victory_bursts(self, painter: QPainter, char_rect: QRectF, hand_x: float, hand_y: float):
         """
-        Renders explosive comic book celebration particles:
-        Expanding golden stars, ruby energy sparkles, and luminous hydration water beads.
+        Renders explosive comic book celebration party:
+        Dynamic 'THWIP! HYDRATED! 💧' comic speech badge, expanding golden stars,
+        ruby energy sparkles, and luminous hydration water beads.
         """
         p = self._celebration_progress
         alpha = int(255 * (1.0 - (p * 0.35)))
@@ -779,41 +869,65 @@ class SpideyWidget(QWidget):
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # 1. Golden Star Sparkles (Expanding outward)
+        # 1. Comic Celebration Text Banner ("THWIP! HYDRATED! 💧")
+        if p > 0.15:
+            banner_alpha = int(255 * min(1.0, (1.0 - p) * 1.8))
+            banner_w = 160.0
+            banner_h = 32.0
+            banner_x = cx - banner_w / 2.0
+            banner_y = char_rect.top() + 10.0 - (p * 15.0)
+
+            # Comic banner bubble
+            painter.setPen(QPen(QColor(0, 240, 255, banner_alpha), 1.5))
+            painter.setBrush(QColor(214, 72, 63, int(banner_alpha * 0.95)))
+            painter.drawRoundedRect(QRectF(banner_x, banner_y, banner_w, banner_h), 8.0, 8.0)
+
+            # Banner text
+            painter.setPen(QColor(255, 255, 255, banner_alpha))
+            banner_font = QFont("Segoe UI", 10, QFont.Weight.ExtraBold)
+            painter.setFont(banner_font)
+            painter.drawText(QRectF(banner_x, banner_y, banner_w, banner_h), Qt.AlignmentFlag.AlignCenter, "THWIP! HYDRATED! 💧")
+
+        # 2. Golden Star Sparkles (Expanding outward)
         gold_color = QColor(251, 191, 36, alpha)
         painter.setBrush(gold_color)
         painter.setPen(Qt.PenStyle.NoPen)
 
         # Top-right golden star
-        r1 = 6.0 + (p * 5.0)
-        d1 = 25.0 + (p * 35.0)
-        self._draw_star(painter, cx + d1, cy - (d1 * 0.6), r1, rotation=p * 90.0)
+        r1 = 6.0 + (p * 7.0)
+        d1 = 25.0 + (p * 45.0)
+        self._draw_star(painter, cx + d1, cy - (d1 * 0.6), r1, rotation=p * 120.0)
 
         # Bottom-left golden star
-        r2 = 5.0 + (p * 4.0)
-        d2 = 20.0 + (p * 30.0)
-        self._draw_star(painter, cx - (d2 * 1.1), cy + (d2 * 0.5), r2, rotation=-p * 75.0)
+        r2 = 5.0 + (p * 6.0)
+        d2 = 20.0 + (p * 38.0)
+        self._draw_star(painter, cx - (d2 * 1.1), cy + (d2 * 0.5), r2, rotation=-p * 90.0)
 
-        # 2. Ruby Comic Energy Bursts
+        # 3. Ruby Comic Energy Bursts
         ruby_color = QColor(244, 63, 94, alpha)
         painter.setBrush(ruby_color)
-        d3 = 30.0 + (p * 40.0)
-        self._draw_star(painter, cx - (d3 * 0.9), cy - (d3 * 0.7), 5.5 + (p * 3.0), rotation=p * 45.0)
+        d3 = 30.0 + (p * 48.0)
+        self._draw_star(painter, cx - (d3 * 0.9), cy - (d3 * 0.7), 6.5 + (p * 4.0), rotation=p * 60.0)
 
-        # 3. Glowing Hydration Cyan Droplets
-        cyan_pen = QPen(QColor(0, 240, 255, alpha), 1.6)
+        # 4. Glowing Hydration Cyan Droplets splashing outward
+        cyan_pen = QPen(QColor(0, 240, 255, alpha), 1.8)
         painter.setPen(cyan_pen)
-        painter.setBrush(QColor(0, 240, 255, int(alpha * 0.6)))
+        painter.setBrush(QColor(0, 240, 255, int(alpha * 0.75)))
         
         # Droplet 1
-        drop1_x = cx + (d1 * 0.75)
-        drop1_y = cy + (d1 * 0.8)
-        painter.drawEllipse(QPointF(drop1_x, drop1_y), 3.5, 3.5)
+        drop1_x = cx + (d1 * 0.85)
+        drop1_y = cy + (d1 * 0.9)
+        painter.drawEllipse(QPointF(drop1_x, drop1_y), 4.0, 4.0)
 
         # Droplet 2
-        drop2_x = cx - (d2 * 0.6)
-        drop2_y = cy - (d2 * 1.1)
-        painter.drawEllipse(QPointF(drop2_x, drop2_y), 3.0, 3.0)
+        drop2_x = cx - (d2 * 0.7)
+        drop2_y = cy - (d2 * 1.2)
+        painter.drawEllipse(QPointF(drop2_x, drop2_y), 3.5, 3.5)
+
+        # Droplet 3 (Center top splash)
+        drop3_x = cx + math.sin(p * 6.0) * 15.0
+        drop3_y = cy - (d3 * 0.85)
+        painter.drawEllipse(QPointF(drop3_x, drop3_y), 3.2, 3.2)
 
         painter.restore()
 

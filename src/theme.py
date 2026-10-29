@@ -9,58 +9,60 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ThemeTokens:
-    # Stark Tech / EDITH Pitch-Black & Tactical Obsidian Palette
-    BG_BASE: str = "#000000"       # Pure Tactical Void Black
-    BG_SURFACE: str = "#05070a"    # Deep Stark Obsidian Panel
-    BG_CARD: str = "rgba(8, 12, 16, 0.95)"  # Crisp Stark Tactical Card
-    BG_CARD_SOLID: str = "#080c10" # Solid Tactical Dark
-    BG_CARD_HOVER: str = "rgba(16, 24, 34, 0.98)" # Hover HUD Surface
-    BG_INPUT: str = "rgba(4, 6, 8, 0.95)"       # Deep Input Well
-    BG_OVERLAY: str = "rgba(0, 0, 0, 0.95)"     # Companion overlay frosted glass
+    # Solid Obsidian Dark Surfaces (Linear / Raycast Style - Zero Glassmorphism)
+    BG_BASE: str = "#111317"        # Solid matte obsidian canvas
+    BG_SURFACE: str = "#15181E"     # Top bar / header surface
+    BG_CARD: str = "#181B22"        # Solid flat card surface
+    BG_CARD_SOLID: str = "#181B22"  # Solid card surface
+    BG_CARD_HOVER: str = "#212630"  # Card hover state
+    BG_INPUT: str = "#13151A"       # Sunken solid input well
+    BG_OVERLAY: str = "#181B22"     # Companion overlay card (solid opaque)
 
-    # Stark HUD Laser Accents
-    ACCENT_AQUA: str = "#ffffff"        # Stark Laser Crisp White
-    ACCENT_AZURE: str = "#00f0ff"       # Holographic Cyan HUD Glow
-    ACCENT_MINT: str = "#00f5a0"        # Target Lock Mint
-    ACCENT_TEAL: str = "#5ce1e6"        # Telemetry Cyan
+    # Calm Water Cyan Accents
+    ACCENT_AQUA: str = "#6cb6c8"        # Calm bioluminescent water cyan
+    ACCENT_AZURE: str = "#4f98ad"       # Deep water tone
+    ACCENT_MINT: str = "#7fc8a0"        # Hydration complete / health mint
+    ACCENT_TEAL: str = "#5aa5b5"        # Intermediate water tone
 
-    # Character Brand Accents (Stark Armor Crimson & Gold)
-    ACCENT_RED: str = "#ff2a4b"         # Stark Armor Crimson
-    ACCENT_RED_HOVER: str = "#ff4d6a"   # Glowing Crimson Highlight
-    ACCENT_RED_ACTIVE: str = "#d61b39"  # Deep Crimson Pressed
-    ACCENT_RUBY: str = "#ff5577"        # Soft Ruby Highlight
-    ACCENT_GOLD: str = "#ffb800"        # Stark Amber / Cooldown
+    # Spider-Man & Spider-Sense Brand Accents
+    ACCENT_RED: str = "#d6483f"         # Muted brick crimson (Spider-Man emblem)
+    ACCENT_CRIMSON: str = "#d6483f"     # Brick crimson alias
+    ACCENT_RED_HOVER: str = "#e2584f"   # Glowing scarlet hover
+    ACCENT_RED_ACTIVE: str = "#b33a33"  # Deep crimson pressed
+    ACCENT_RUBY: str = "#e58a83"        # Soft ruby highlight
+    ACCENT_GOLD: str = "#d9a548"        # Spider-Sense golden-amber tingle
+    ACCENT_MAGENTA: str = "#ff1493"     # Spider-Verse neon magenta chromatic pulse
 
     # Status Colors
-    STATUS_SUCCESS: str = "#00f5a0"     # Calibrated Lock
-    STATUS_WARNING: str = "#ffb800"     # Telemetry Warning
-    STATUS_ERROR: str = "#ff2a4b"       # Stark Critical Alert
-    STATUS_INFO: str = "#ffffff"        # System Info White
+    STATUS_SUCCESS: str = "#7fc8a0"     # Green calibrated
+    STATUS_WARNING: str = "#d9a548"     # Spider-Sense amber alert
+    STATUS_ERROR: str = "#e2584f"       # Declined red
+    STATUS_INFO: str = "#6cb6c8"        # Info cyan
 
-    # High-Contrast Modern Typography Colors
-    TEXT_PRIMARY: str = "#ffffff"       # Crisp Stark White
-    TEXT_SECONDARY: str = "#c2c8d0"     # Tactical Silver
-    TEXT_MUTED: str = "#738090"         # Telemetry Muted Slate
-    TEXT_SUBTLE: str = "#455060"        # Inactive / Placeholder
+    # Typography Colors (Warm paper white & legible muted graphite)
+    TEXT_PRIMARY: str = "#ecebe6"       # Warm paper white
+    TEXT_SECONDARY: str = "#c1c0ba"     # Calm secondary text
+    TEXT_MUTED: str = "#8d9199"         # Muted slate labels
+    TEXT_SUBTLE: str = "#5d6169"        # Inactive / placeholder
 
-    # Laser-Cut HUD Borders & Dividers
-    BORDER_GLASS: str = "rgba(255, 255, 255, 0.22)"       # Tactical HUD 1px Stroke
-    BORDER_GLASS_ACTIVE: str = "rgba(255, 255, 255, 0.85)" # Active Laser-Cut Stroke
-    BORDER_DEFAULT: str = "rgba(255, 255, 255, 0.22)"     # Default HUD Line
-    BORDER_SUBTLE: str = "rgba(255, 255, 255, 0.10)"      # Subtle Division
-    BORDER_FOCUS: str = "#ffffff"                         # Pure White Focus Ring
-    BORDER_RED: str = "#ff2a4b"                           # Stark Red Alert Border
+    # Crisp Precision Borders (Solid 1px Obsidian - No Glass Transparency)
+    BORDER_GLASS: str = "#2D333D"       # Solid 1px container border
+    BORDER_GLASS_ACTIVE: str = "#6cb6c8" # Solid active border
+    BORDER_DEFAULT: str = "#2D333D"     # Clean 1px card border
+    BORDER_SUBTLE: str = "#222730"      # Solid divider line
+    BORDER_FOCUS: str = "#6cb6c8"       # Focus outline
+    BORDER_RED: str = "#d6483f"         # Crimson accent border
 
-    # Radii (Sharp Tactical HUD Curves)
-    RADIUS_SM: str = "4px"
-    RADIUS_MD: str = "8px"
-    RADIUS_LG: str = "12px"
-    RADIUS_XL: str = "16px"
+    # Radii
+    RADIUS_SM: str = "6px"
+    RADIUS_MD: str = "10px"
+    RADIUS_LG: str = "14px"
+    RADIUS_XL: str = "18px"
     RADIUS_PILL: str = "9999px"
 
-    # Clean, Ultra-Modern High-Tech Typography (NO nested quotes for Qt parser)
-    FONT_FAMILY: str = "Segoe UI, Arial, sans-serif"
-    FONT_MONO: str = "Consolas, Segoe UI, monospace"
+    # Typography
+    FONT_FAMILY: str = "Segoe UI Variable, Segoe UI, -apple-system, sans-serif"
+    FONT_MONO: str = "Cascadia Code, Consolas, monospace"
 
 
 # Global Tokens Instance
@@ -107,7 +109,7 @@ def get_dashboard_qss() -> str:
             letter-spacing: 0.5px;
         }}
         QTabBar::tab:selected {{
-            background: rgba(255, 255, 255, 0.12);
+            background: #252B35;
             color: #ffffff;
             border: 1px solid {TOKENS.BORDER_GLASS_ACTIVE};
         }}
@@ -128,14 +130,14 @@ def get_dashboard_qss() -> str:
             letter-spacing: 0.5px;
         }}
         QPushButton.navBtn:hover {{
-            background-color: rgba(255, 255, 255, 0.08);
+            background-color: #212630;
             color: #ffffff;
-            border-color: rgba(255, 255, 255, 0.25);
+            border-color: {TOKENS.BORDER_DEFAULT};
         }}
         QPushButton.navBtn[selected="true"] {{
-            background-color: rgba(255, 255, 255, 0.14);
+            background-color: #252B35;
             color: #ffffff;
-            border: 1px solid #ffffff;
+            border: 1px solid {TOKENS.ACCENT_AQUA};
             font-weight: 800;
         }}
         /* Form Inputs */
@@ -149,7 +151,7 @@ def get_dashboard_qss() -> str:
             font-family: {TOKENS.FONT_MONO};
         }}
         QLineEdit:focus, QSpinBox:focus, QTimeEdit:focus, QComboBox:focus {{
-            border: 1.5px solid #ffffff;
+            border: 1.5px solid {TOKENS.ACCENT_AQUA};
             background-color: #0c1219;
         }}
         QComboBox::drop-down {{
@@ -179,101 +181,88 @@ def get_dashboard_qss() -> str:
         }}
         /* Standard Action Buttons */
         QPushButton.primaryBtn {{
-            background-color: #ffffff;
-            color: #000000;
-            font-weight: 800;
-            border: 1px solid #ffffff;
-            border-radius: {TOKENS.RADIUS_SM};
+            background-color: {TOKENS.ACCENT_RED};
+            color: #ffffff;
+            font-weight: 700;
+            border: 1px solid {TOKENS.ACCENT_RED_HOVER};
+            border-radius: {TOKENS.RADIUS_MD};
             padding: 9px 18px;
-            font-size: 12.5px;
-            letter-spacing: 0.5px;
+            font-size: 13px;
         }}
         QPushButton.primaryBtn:hover {{
-            background-color: #e2e8f0;
+            background-color: {TOKENS.ACCENT_RED_HOVER};
             border-color: #ffffff;
         }}
         QPushButton.primaryBtn:pressed {{
-            background-color: #cbd5e1;
+            background-color: {TOKENS.ACCENT_RED_ACTIVE};
         }}
         QPushButton.heroDrinkBtn {{
-            background: qlineargradient(
-                x1: 0, y1: 0, x2: 1, y2: 0,
-                stop: 0 {TOKENS.ACCENT_RED},
-                stop: 1 {TOKENS.ACCENT_RED_HOVER}
-            );
+            background-color: {TOKENS.ACCENT_RED};
             color: #ffffff;
             font-size: 14px;
-            font-weight: 900;
-            letter-spacing: 1px;
-            border: 1.5px solid #ffffff;
-            border-radius: {TOKENS.RADIUS_MD};
-            padding: 12px 24px;
+            font-weight: 800;
+            border: 1px solid {TOKENS.ACCENT_RED_HOVER};
+            border-radius: {TOKENS.RADIUS_PILL};
+            padding: 12px 28px;
         }}
         QPushButton.heroDrinkBtn:hover {{
-            background: qlineargradient(
-                x1: 0, y1: 0, x2: 1, y2: 0,
-                stop: 0 {TOKENS.ACCENT_RED_HOVER},
-                stop: 1 #ff6688
-            );
-            border-color: #00f0ff;
+            background-color: {TOKENS.ACCENT_RED_HOVER};
+            border-color: #ffffff;
         }}
         QPushButton.heroDrinkBtn:pressed {{
             background-color: {TOKENS.ACCENT_RED_ACTIVE};
         }}
         QPushButton.heroDrinkBtn:disabled {{
-            background-color: rgba(30, 36, 48, 0.7);
+            background-color: #1E222A;
             color: {TOKENS.TEXT_MUTED};
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid {TOKENS.BORDER_DEFAULT};
         }}
         QPushButton.chipBtn {{
-            background-color: #070a0e;
-            color: {TOKENS.TEXT_SECONDARY};
+            background-color: {TOKENS.BG_CARD};
+            color: {TOKENS.TEXT_PRIMARY};
             font-size: 12px;
-            font-weight: 700;
-            font-family: {TOKENS.FONT_MONO};
-            border: 1px solid rgba(255, 255, 255, 0.20);
-            border-radius: {TOKENS.RADIUS_SM};
-            padding: 7px 14px;
+            font-weight: 600;
+            border: 1px solid {TOKENS.BORDER_DEFAULT};
+            border-radius: {TOKENS.RADIUS_MD};
+            padding: 8px 14px;
         }}
         QPushButton.chipBtn:hover {{
-            background-color: rgba(255, 255, 255, 0.10);
-            color: #ffffff;
-            border-color: #ffffff;
+            background-color: {TOKENS.BG_CARD_HOVER};
+            border-color: {TOKENS.ACCENT_AQUA};
         }}
         QPushButton.chipBtn[selected="true"] {{
-            background-color: rgba(255, 255, 255, 0.20);
+            background-color: #2D2224;
             color: #ffffff;
-            border: 1.5px solid #ffffff;
-            font-weight: 800;
+            border: 1px solid {TOKENS.ACCENT_RED};
+            font-weight: 700;
         }}
         QPushButton.secondaryBtn {{
-            background-color: #070a0e;
-            color: {TOKENS.TEXT_SECONDARY};
-            font-weight: 700;
-            border: 1px solid {TOKENS.BORDER_GLASS};
-            border-radius: {TOKENS.RADIUS_SM};
+            background-color: {TOKENS.BG_CARD};
+            color: {TOKENS.TEXT_PRIMARY};
+            font-weight: 600;
+            border: 1px solid {TOKENS.BORDER_DEFAULT};
+            border-radius: {TOKENS.RADIUS_MD};
             padding: 8px 16px;
-            font-size: 12px;
+            font-size: 12.5px;
         }}
         QPushButton.secondaryBtn:hover {{
-            background-color: rgba(255, 255, 255, 0.08);
-            color: #ffffff;
-            border-color: #ffffff;
+            background-color: {TOKENS.BG_CARD_HOVER};
+            border-color: {TOKENS.ACCENT_AQUA};
         }}
         /* Smooth Scrollbars */
         QScrollBar:vertical {{
             border: none;
-            background: #000000;
+            background: #111317;
             width: 8px;
             border-radius: 4px;
         }}
         QScrollBar::handle:vertical {{
-            background: rgba(255, 255, 255, 0.25);
+            background: {TOKENS.BORDER_DEFAULT};
             border-radius: 4px;
             min-height: 24px;
         }}
         QScrollBar::handle:vertical:hover {{
-            background: #ffffff;
+            background: #3E4654;
         }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
             height: 0px;
@@ -282,105 +271,122 @@ def get_dashboard_qss() -> str:
 
 
 def get_companion_card_qss() -> str:
-    """Returns the QSS stylesheet for the companion speech and action card with Stark Tech HUD aesthetic."""
-    return f"""
-        #spideyCard {{
-            background-color: rgba(4, 6, 8, 0.96);
-            border: 1.5px solid #ffffff;
-            border-radius: {TOKENS.RADIUS_LG};
-        }}
-        QLabel {{
-            color: {TOKENS.TEXT_PRIMARY};
-            font-family: {TOKENS.FONT_FAMILY};
-        }}
-        QPushButton {{
-            font-family: {TOKENS.FONT_FAMILY};
+    """Returns the QSS stylesheet for the companion speech and action card matching the Spider-Man comic pop-art theme."""
+    return """
+        #spideyCard {
+            background-color: #fffef6;
+            border: 2.5px solid #141a3a;
+            border-radius: 18px;
+        }
+        QLabel {
+            color: #141a3a;
+            font-family: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
+        }
+        QPushButton {
+            font-family: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
             font-weight: 700;
-            border-radius: {TOKENS.RADIUS_SM};
-            padding: 7px 12px;
-        }}
+        }
     """
 
 
 def get_tray_menu_qss() -> str:
-    """Returns the system tray context menu stylesheet with Stark Tech HUD aesthetic."""
+    """Returns the system tray context menu stylesheet with Lab Logbook aesthetic."""
     return f"""
         QMenu {{
-            background-color: #05070a;
+            background-color: {TOKENS.BG_CARD};
             color: {TOKENS.TEXT_PRIMARY};
-            border: 1.5px solid #ffffff;
-            border-radius: {TOKENS.RADIUS_SM};
+            border: 1px solid {TOKENS.BORDER_DEFAULT};
+            border-radius: {TOKENS.RADIUS_MD};
             padding: 6px;
             font-family: {TOKENS.FONT_FAMILY};
         }}
         QMenu::item {{
             padding: 7px 20px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-weight: 600;
         }}
         QMenu::item:selected {{
-            background-color: #ffffff;
-            color: #000000;
-            font-weight: 800;
+            background-color: {TOKENS.ACCENT_RED};
+            color: #ffffff;
+            font-weight: 700;
         }}
         QMenu::separator {{
             height: 1px;
-            background: {TOKENS.BORDER_DEFAULT};
+            background: {TOKENS.BORDER_SUBTLE};
             margin: 4px 8px;
         }}
     """
 
 
 def get_dialog_qss() -> str:
-    """Returns modal dialog styling for wizard and setup in Stark Tech HUD style."""
+    """Returns modal dialog styling for wizard and setup in Deep Black & Polished Gold aesthetic."""
     return f"""
         QDialog {{
-            background-color: {TOKENS.BG_BASE};
-            color: {TOKENS.TEXT_PRIMARY};
+            background-color: #0b0c10;
+            color: #f5f6f9;
             font-family: {TOKENS.FONT_FAMILY};
         }}
         QLabel {{
-            color: {TOKENS.TEXT_PRIMARY};
+            color: #f5f6f9;
         }}
-        QLineEdit, QSpinBox, QTimeEdit {{
-            background-color: {TOKENS.BG_INPUT};
-            color: {TOKENS.TEXT_PRIMARY};
-            border: 1.5px solid {TOKENS.BORDER_DEFAULT};
+        QLineEdit, QSpinBox, QTimeEdit, QComboBox {{
+            background-color: #12141a;
+            color: #f5f6f9;
+            border: 1.5px solid #3d341a;
             border-radius: {TOKENS.RADIUS_SM};
             padding: 6px 10px;
             font-size: 13px;
             font-family: {TOKENS.FONT_MONO};
         }}
-        QLineEdit:focus, QSpinBox:focus, QTimeEdit:focus {{
-            border-color: #ffffff;
+        QLineEdit:focus, QSpinBox:focus, QTimeEdit:focus, QComboBox:focus {{
+            border-color: #d4af37;
+            background-color: #161922;
         }}
         QRadioButton, QCheckBox {{
-            color: {TOKENS.TEXT_SECONDARY};
+            color: #c5bfab;
             font-size: 13px;
             spacing: 8px;
             font-weight: 600;
         }}
+        QRadioButton::indicator, QCheckBox::indicator {{
+            width: 17px;
+            height: 17px;
+            border: 1.5px solid #4a3e1b;
+            border-radius: 4px;
+            background-color: #12141a;
+        }}
+        QRadioButton::indicator:hover, QCheckBox::indicator:hover {{
+            border-color: #d4af37;
+        }}
         QRadioButton::indicator:checked, QCheckBox::indicator:checked {{
-            background-color: #ffffff;
-            border: 1.5px solid #ffffff;
+            background-color: #d4af37;
+            border: 1.5px solid #f5d77f;
         }}
         QPushButton {{
             font-weight: 700;
             border-radius: {TOKENS.RADIUS_SM};
             padding: 8px 16px;
             font-size: 13px;
+            background-color: #181b24;
+            color: #dcd8cc;
+            border: 1px solid #4a3e1b;
+        }}
+        QPushButton:hover {{
+            background-color: #222633;
+            border-color: #d4af37;
+            color: #ffffff;
         }}
         QProgressBar {{
-            background-color: {TOKENS.BG_INPUT};
-            border: 1px solid {TOKENS.BORDER_DEFAULT};
+            background-color: #12141a;
+            border: 1px solid #3d341a;
             border-radius: {TOKENS.RADIUS_SM};
             text-align: center;
-            color: {TOKENS.TEXT_PRIMARY};
+            color: #f5f6f9;
             font-weight: 700;
             font-family: {TOKENS.FONT_MONO};
         }}
         QProgressBar::chunk {{
-            background-color: #ffffff;
+            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #d4af37, stop: 1 #f5d77f);
             border-radius: 2px;
         }}
     """

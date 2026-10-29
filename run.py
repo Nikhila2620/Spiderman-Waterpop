@@ -8,6 +8,8 @@ import atexit
 import logging
 from logging.handlers import RotatingFileHandler
 import threading
+import time
+import tempfile
 from pathlib import Path
 
 # Ensure project root is in sys.path
@@ -17,14 +19,26 @@ from src.version import FULL_NAME
 from src.utils import resource_path
 from src.windows_native import NamedMutexGuard
 
-# 1. Consolidate logging to %APPDATA%\SpiderManWaterBuddy\logs\app.log
+# 1. Consolidate logging with robust directory creation and fallback
 app_data = os.environ.get("APPDATA")
+candidates = []
 if app_data:
-    log_dir = Path(app_data) / "SpiderManWaterBuddy" / "logs"
-else:
-    log_dir = Path.home() / ".spiderman_water_buddy" / "logs"
+    candidates.append(Path(app_data) / "SpiderManWaterBuddy" / "logs")
+candidates.append(Path.home() / ".spiderman_water_buddy" / "logs")
+candidates.append(Path(tempfile.gettempdir()) / "SpiderManWaterBuddy" / "logs")
 
-log_dir.mkdir(parents=True, exist_ok=True)
+log_dir = None
+for cand in candidates:
+    try:
+        cand.mkdir(parents=True, exist_ok=True)
+        log_dir = cand
+        break
+    except Exception:
+        continue
+
+if log_dir is None:
+    log_dir = Path(".")
+
 log_file = log_dir / "app.log"
 
 handlers = [
@@ -41,12 +55,23 @@ logging.basicConfig(
 logger = logging.getLogger("SpiderManWaterBuddy")
 
 
-# 2. Crash reporting & unhandled exception hooks (NEW-05)
+# 2. Crash reporting & rate-limited unhandled exception hooks (prevents dialog storms)
+_last_error_dialog_time = 0.0
+
 def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
+    global _last_error_dialog_time
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
     logger.critical("Unhandled exception encountered:", exc_info=(exc_type, exc_value, exc_traceback))
+
+    # Rate-limit modal dialogs: max 1 per 30 seconds
+    now = time.time()
+    if now - _last_error_dialog_time < 30.0:
+        logger.warning("Suppressed consecutive error dialog within rate limit window.")
+        return
+    _last_error_dialog_time = now
+
     try:
         from PySide6.QtWidgets import QMessageBox, QApplication
         if QApplication.instance():
@@ -66,49 +91,98 @@ if hasattr(threading, "excepthook"):
         logger.critical(f"Unhandled thread exception in {args.thread}:", exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
     threading.excepthook = handle_thread_exception
 
-from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QIcon, QGuiApplication
-from PySide6.QtCore import Qt
-from PySide6.QtNetwork import QLocalSocket
+
+# 3. Safe PySide6 imports with native fallback if launched directly under pythonw without dependencies
+try:
+    from PySide6.QtWidgets import QApplication, QMessageBox
+    from PySide6.QtGui import QIcon, QGuiApplication
+    from PySide6.QtCore import Qt, QCoreApplication
+    from PySide6.QtNetwork import QLocalSocket
+    # Preload QtWebEngineWidgets if available before QApplication instantiation
+    try:
+        from PySide6.QtWebEngineWidgets import QWebEngineView
+    except Exception:
+        pass
+except ImportError:
+    if sys.platform == "win32":
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(
+            0,
+            "PySide6 is not installed.\nPlease run SETUP.bat in the application folder to install required dependencies.",
+            "Spider-Man Water Buddy",
+            0x10,
+        )
+    sys.exit(1)
+
 from src.app import SpiderManWaterBuddyApp
 
 
 def main():
+    # Explicit Windows AppUserModelID for crisp Taskbar and Alt-Tab branding
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SpiderManWaterpop.DesktopApp.2.0")
+        except Exception:
+            pass
+
     # Modern Qt 6 High-DPI rounding policy
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
 
-    # 3. Named Mutex Single-Instance Guard (CRIT-05 / NEW-06)
+    # 4. Named Mutex Single-Instance Guard
     mutex_guard = NamedMutexGuard("Local\\SpiderManWaterBuddy_SingleInstance_Mutex")
     if not mutex_guard.acquire():
         logger.info("Another instance is already running (Named Mutex held). Notifying and activating existing instance...")
         app_dummy = QApplication.instance() or QApplication(sys.argv)
         socket = QLocalSocket()
-        socket.connectToServer("SpiderManWaterBuddy_SingleInstance_Pipe")
-        if socket.waitForConnected(800):
-            socket.write(b"ACTIVATE")
-            socket.waitForBytesWritten(800)
-            socket.disconnectFromServer()
+        connected = False
+        for _ in range(5):
+            socket.connectToServer("SpiderManWaterBuddy_SingleInstance_Pipe")
+            if socket.waitForConnected(600):
+                connected = True
+                socket.write(b"ACTIVATE")
+                socket.waitForBytesWritten(600)
+                socket.disconnectFromServer()
+                break
+            time.sleep(0.3)
+        if not connected:
+            logger.info("Existing instance mutex held; pipe connection was not received. Informing user.")
+            try:
+                QMessageBox.information(
+                    None,
+                    "Spider-Man Water Buddy",
+                    "Spider-Man Water Buddy is already running in the background.\nCheck your system tray (near the clock) or press Ctrl+Alt+W.",
+                )
+            except Exception:
+                pass
         sys.exit(0)
 
     atexit.register(mutex_guard.release)
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Spider-Man Water Buddy")
-    app.setOrganizationName("Antigravity")
+    app.setApplicationName("Spider-Man Waterpop")
+    app.setApplicationDisplayName(FULL_NAME)
+    app.setOrganizationName("SpiderManWaterpop")
     app.setQuitOnLastWindowClosed(False)  # Keep running in system tray
 
-    # App icon from resource path (NEW-09)
-    icon_path = resource_path("assets/images/app_icon.png")
-    if icon_path.exists():
-        app.setWindowIcon(QIcon(str(icon_path)))
+    # App icon from resource path (ICO for Windows taskbar + PNG)
+    ico_path = resource_path("assets/images/app_icon.ico")
+    png_path = resource_path("assets/images/app_icon.png")
+    app_icon = None
+    if ico_path.exists():
+        app_icon = QIcon(str(ico_path))
+    elif png_path.exists():
+        app_icon = QIcon(str(png_path))
+    if app_icon and not app_icon.isNull():
+        app.setWindowIcon(app_icon)
 
     controller = SpiderManWaterBuddyApp(app)
 
-    # Transient runtime flags: standard launch opens Dashboard immediately
+    # Transient runtime flags: standard launch shows perched companion; dashboard opens on click or --dashboard
     minimized_override = False
-    show_dashboard_flag = True
+    show_dashboard_flag = False
     if "--minimized" in sys.argv:
         logger.info("Launched with --minimized flag (Windows Startup).")
         minimized_override = True

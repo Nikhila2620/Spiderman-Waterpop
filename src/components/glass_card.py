@@ -23,7 +23,7 @@ class GlassCard(QFrame):
         self.setStyleSheet(f"""
             QFrame#glassCard {{
                 background-color: {TOKENS.BG_CARD};
-                border: 1px solid {TOKENS.BORDER_GLASS};
+                border: 1px solid {TOKENS.BORDER_DEFAULT};
                 border-radius: {TOKENS.RADIUS_LG};
             }}
         """)

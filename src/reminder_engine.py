@@ -270,12 +270,14 @@ class ReminderEngine(QObject):
 
     def on_user_dismissed(self) -> None:
         """User closed popup or reminder auto-closed without response (MED-05)."""
-        if self.state == ReminderState.WAITING_FOR_RESPONSE:
-            mins = max(1, min(120, self.settings.retry_interval_minutes))
+        if self.state in (ReminderState.WAITING_FOR_RESPONSE, ReminderState.RETRY_SCHEDULED):
+            # User dismissed the reminder. Respect user focus and prevent the irritating 5-minute nag loop
+            # by scheduling the next reminder for the full configured reminder interval.
+            mins = max(1, min(720, self.settings.reminder_interval_minutes))
             now = datetime.now()
             self._target_time = now + timedelta(minutes=mins)
-            self._set_state(ReminderState.RETRY_SCHEDULED)
-            logger.info(f"Reminder dismissed without action. Retry scheduled in {mins}m.")
+            self._set_state(ReminderState.IDLE)
+            logger.info(f"Reminder dismissed. Next reminder scheduled in {mins}m.")
 
     def pause_reminders(self, pause: bool = True) -> None:
         self.settings.reminders_paused = pause

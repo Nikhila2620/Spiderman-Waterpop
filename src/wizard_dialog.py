@@ -53,18 +53,18 @@ class SetupWizardDialog(QDialog):
         # Header Title Banner
         header = QHBoxLayout()
         header_title = QLabel("🕷️ SPIDER-MAN WATER BUDDY SETUP")
-        header_title.setStyleSheet(f"color: {TOKENS.ACCENT_AQUA}; font-size: 14px; font-weight: 800; letter-spacing: 1.5px;")
+        header_title.setStyleSheet("color: #d4af37; font-size: 14px; font-weight: 800; letter-spacing: 1.5px;")
         header.addWidget(header_title)
         header.addStretch()
         self.step_label = QLabel("Step 1 of 4")
-        self.step_label.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 12px; font-weight: 600;")
+        self.step_label.setStyleSheet("color: #c5bfab; font-size: 12px; font-weight: 600;")
         header.addWidget(self.step_label)
         layout.addLayout(header)
 
         # Divider
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setStyleSheet(f"color: {TOKENS.BORDER_GLASS};")
+        divider.setStyleSheet("color: #3d341a; background-color: #3d341a;")
         layout.addWidget(divider)
 
         # Stacked Pages
@@ -78,19 +78,25 @@ class SetupWizardDialog(QDialog):
         # Navigation Bar (Back, Next/Finish)
         nav_layout = QHBoxLayout()
         self.btn_back = QPushButton("← Back")
-        self.btn_back.setStyleSheet(f"""
-            QPushButton {{
-                background-color: rgba(12, 26, 46, 0.8);
-                color: {TOKENS.TEXT_SECONDARY};
-                border: 1px solid {TOKENS.BORDER_GLASS};
-                border-radius: {TOKENS.RADIUS_MD};
+        self.btn_back.setStyleSheet("""
+            QPushButton {
+                background-color: #181b24;
+                color: #dcd8cc;
+                border: 1px solid #4a3e1b;
+                border-radius: 6px;
                 padding: 7px 14px;
                 font-weight: 600;
-            }}
-            QPushButton:hover {{
-                background-color: rgba(16, 36, 64, 0.95);
+            }
+            QPushButton:hover {
+                background-color: #222633;
+                border-color: #d4af37;
                 color: #ffffff;
-            }}
+            }
+            QPushButton:disabled {
+                background-color: #12141a;
+                color: #555146;
+                border: 1px solid #2d2618;
+            }
         """)
         self.btn_back.clicked.connect(self._go_back)
         self.btn_back.setEnabled(False)
@@ -101,11 +107,14 @@ class SetupWizardDialog(QDialog):
         self.btn_next = QPushButton("Next →")
         self.btn_next.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #e11d48, stop: 1 #be123c);
-                color: #ffffff;
-                border: 1px solid #f43f5e;
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #d4af37, stop: 1 #b89326);
+                color: #0b0c10;
+                font-weight: 900;
+                border: 1px solid #f5d77f;
+                border-radius: 6px;
+                padding: 8px 18px;
             }
-            QPushButton:hover { background: #f43f5e; }
+            QPushButton:hover { background: #e8c459; border-color: #ffe394; }
         """)
         self.btn_next.clicked.connect(self._go_next)
         nav_layout.addWidget(self.btn_next)

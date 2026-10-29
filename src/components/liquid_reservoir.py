@@ -1,48 +1,46 @@
 """
-Spider-Man Stark Tech / E.D.I.T.H. Tactical HUD Reticle Widget.
-Renders the high-tech tactical circular HUD interface with compass degree markings,
-Spider-Man eye-lenses targeting crosshairs, segmented web-fluid charge meters,
-and real-time hydration telemetry with modern, ultra-clean typography.
+Core Fluid Level & Spider-Sense Hydration Chamber Widget for Spider-Man Water Buddy v2.0.
+Synthesizes calm bioluminescent water fluid dynamics with comic Spider-Sense electric squiggles
+and clean, legible telemetry (warm paper white and graphite).
 """
 import math
-from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
+from PySide6.QtCore import Qt, QTimer, QRectF, QPointF, Signal, Property
 from PySide6.QtWidgets import QWidget
-from PySide6.QtGui import (
-    QPainter,
-    QPainterPath,
-    QColor,
-    QLinearGradient,
-    QPen,
-    QFont,
-)
+from PySide6.QtGui import QPainter, QColor, QPen, QFont, QPainterPath
 
 from src.theme import TOKENS
 
 
 class LiquidReservoirWidget(QWidget):
     """
-    Spider-Man Stark Tech / E.D.I.T.H. Tactical HUD Reticle.
-    Renders high-precision targeting rings, degree dials, Spider-Man eye-lens crosshairs,
-    and live hydration progress telemetry.
+    Minimal Core Fluid Level Chamber with Spider-Sense electric arcs and fluid telemetry.
     """
+    clicked = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(270, 260)
+        self.setMinimumSize(220, 220)
 
         self._current_ml = 0
         self._goal_ml = 2000
+        self._fill_level = 0.0
 
-        # Animation state for telemetry pulse & rotating orbital ticks
+        # Animation phase for subtle liquid and Spider-Sense shimmer
         self._phase = 0.0
-        self._phase_speed = 0.04
-
-        # Wave / pulse loop timer (30 FPS ~ 33ms)
         self._timer = QTimer(self)
-        self._timer.setInterval(33)
+        self._timer.setInterval(33)  # ~30 FPS
         self._timer.timeout.connect(self._update_hud_tick)
+        self._timer.start()
 
-        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
+    # Qt Property for fill level
+    def get_fill_level(self) -> float:
+        return self._fill_level
+
+    def set_fill_level(self, val: float):
+        self._fill_level = max(0.0, min(1.0, val))
+        self.update()
+
+    fill_level = Property(float, get_fill_level, set_fill_level)
 
     @property
     def current_ml(self) -> int:
@@ -89,12 +87,17 @@ class LiquidReservoirWidget(QWidget):
         self.stop_animation()
 
     def _update_hud_tick(self):
-        self._phase += self._phase_speed
+        self._phase += 0.04
         if self._phase > math.pi * 200:
             self._phase = 0.0
         self.update()
 
     _update_wave = _update_hud_tick
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+            event.accept()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -106,210 +109,98 @@ class LiquidReservoirWidget(QWidget):
         cx = w / 2.0
         cy = h / 2.0
 
-        # Radius for circular HUD
-        r_outer = min(cx, cy) - 14.0
-        r_degrees = r_outer - 12.0
-        r_main = r_degrees - 14.0
-        r_dotted = r_main - 18.0
-        r_inner = r_dotted - 20.0
+        r_main = min(cx, cy) - 26.0
 
-        # 1. Pitch-Black Background Frame
-        painter.fillRect(0, 0, w, h, QColor("#000000"))
-
-        # 2. Outer Calibration Compass Arc Rings
-        pen_white_faint = QPen(QColor(255, 255, 255, 60), 1.0)
-        painter.setPen(pen_white_faint)
+        # 1. Base Track Groove (Smooth dark graphite ring)
+        pen_track = QPen(QColor("#24282f"), 14.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen_track)
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawEllipse(QPointF(cx, cy), r_outer, r_outer)
+        arc_rect = QRectF(cx - r_main, cy - r_main, r_main * 2.0, r_main * 2.0)
+        painter.drawArc(arc_rect, 0, 360 * 16)
 
-        # Draw compass degree tick marks & labels (10, 20, 30, 40, 50...)
-        degree_font = QFont("Segoe UI", 7, QFont.Weight.Bold)
-        painter.setFont(degree_font)
-        painter.setPen(QColor(255, 255, 255, 180))
+        # 2. Outer Subtle Spider-Sense Electric Squiggles at the Crown
+        self._paint_chamber_squiggles(painter, cx, cy, r_main)
 
-        degree_values = [10, 20, 30, 40, 50, 40, 30, 20, 10]
-        step_angle = 18.0  # degrees
-        start_angle_top = -80.0
-        for i, val in enumerate(degree_values):
-            ang = math.radians(start_angle_top + (i * step_angle))
-            tx = cx + r_degrees * math.sin(ang)
-            ty = cy - r_degrees * math.cos(ang)
-            painter.drawText(QRectF(tx - 12, ty - 8, 24, 16), Qt.AlignmentFlag.AlignCenter, str(val))
-
-        # Bottom degree mirror
-        for i, val in enumerate(degree_values):
-            ang = math.radians(start_angle_top + (i * step_angle))
-            tx = cx + r_degrees * math.sin(ang)
-            ty = cy + r_degrees * math.cos(ang)
-            painter.drawText(QRectF(tx - 12, ty - 8, 24, 16), Qt.AlignmentFlag.AlignCenter, str(val))
-
-        # 3. Main Concentric Tracking Circles
-        pen_white_med = QPen(QColor(255, 255, 255, 140), 1.5)
-        painter.setPen(pen_white_med)
-        painter.drawEllipse(QPointF(cx, cy), r_main, r_main)
-
-        # Concentric dotted radar circle
-        pen_dotted = QPen(QColor(255, 255, 255, 90), 1.2, Qt.PenStyle.DotLine)
-        painter.setPen(pen_dotted)
-        painter.drawEllipse(QPointF(cx, cy), r_dotted, r_dotted)
-
-        # Inner fine targeting circle
-        pen_inner = QPen(QColor(255, 255, 255, 110), 1.0)
-        painter.setPen(pen_inner)
-        painter.drawEllipse(QPointF(cx, cy), r_inner, r_inner)
-
-        # 4. Left and Right Segmented Power / Web-Fluid Charge Flanks
-        self._paint_flank_cells(painter, cx, cy, r_main + 5.0, is_left=True)
-        self._paint_flank_cells(painter, cx, cy, r_main + 5.0, is_left=False)
-
-        # 5. Dynamic Hydration Progress Arc (0% to 100%+)
+        # 3. Dynamic Bioluminescent Water Fluid Arc (Calm Cyan #6cb6c8)
         pct = self.clamped_percentage
         if pct > 0:
             span_angle = int((pct / 100.0) * 360 * 16)
-            arc_rect = QRectF(cx - r_main, cy - r_main, r_main * 2, r_main * 2)
 
-            # Outer subtle glow
-            pen_glow = QPen(QColor(0, 240, 255, 100), 5.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
-            painter.setPen(pen_glow)
+            # Soft ambient water glow
+            glow_pen = QPen(QColor(108, 182, 200, 70), 20.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+            painter.setPen(glow_pen)
             painter.drawArc(arc_rect, 90 * 16, -span_angle)
 
-            # Core high-contrast crisp white laser arc
-            pen_arc = QPen(QColor(255, 255, 255, 255), 2.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
-            painter.setPen(pen_arc)
+            # Core fluid arc
+            arc_pen = QPen(QColor("#6cb6c8"), 14.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+            painter.setPen(arc_pen)
             painter.drawArc(arc_rect, 90 * 16, -span_angle)
 
-        # 6. Center Crosshairs with Gaps for Eyes
-        pen_cross = QPen(QColor(255, 255, 255, 160), 1.2)
-        painter.setPen(pen_cross)
-        # Vertical crosshair (Top & Bottom)
-        painter.drawLine(QPointF(cx, cy - r_main), QPointF(cx, cy - 26))
-        painter.drawLine(QPointF(cx, cy + 26), QPointF(cx, cy + r_main))
-        # Horizontal crosshair (Left & Right)
-        painter.drawLine(QPointF(cx - r_main, cy), QPointF(cx - 52.0, cy))
-        painter.drawLine(QPointF(cx + 52.0, cy), QPointF(cx + r_main, cy))
+            # Tiny water drop bead at leading edge
+            lead_rad = math.radians(90.0 - ((pct / 100.0) * 360.0))
+            drop_x = cx + r_main * math.cos(lead_rad)
+            drop_y = cy - r_main * math.sin(lead_rad)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor("#ffffff"))
+            painter.drawEllipse(QPointF(drop_x, drop_y), 4.0, 4.0)
 
-        # 7. Flanking Chevrons / Arrow Targeting Brackets (<<< and >>>)
-        self._paint_chevrons(painter, cx - 42, cy, is_left=True)
-        self._paint_chevrons(painter, cx + 42, cy, is_left=False)
+        # 4. Center Typography (From user's Lab Logbook)
+        # Percentage numeral (e.g. "60%")
+        painter.setPen(QColor(TOKENS.TEXT_PRIMARY))
+        pct_font = QFont("Segoe UI Variable", 34, QFont.Weight.Bold)
+        pct_font.setStyleHint(QFont.StyleHint.SansSerif)
+        painter.setFont(pct_font)
+        painter.drawText(QRectF(cx - 80, cy - 42, 160, 44), Qt.AlignmentFlag.AlignCenter, f"{self.percentage}%")
 
-        # 8. Center Spider-Man Eye Lenses Reticle
-        self._paint_spidey_eye_reticle(painter, cx, cy)
+        # Telemetry: current / goal (e.g. "1,500 / 2,500 ml")
+        painter.setPen(QColor(TOKENS.TEXT_SECONDARY))
+        stat_font = QFont("Segoe UI", 11, QFont.Weight.DemiBold)
+        painter.setFont(stat_font)
+        stat_text = f"{self._current_ml:,} / {self._goal_ml:,} ml"
+        painter.drawText(QRectF(cx - 100, cy + 4, 200, 22), Qt.AlignmentFlag.AlignCenter, stat_text)
 
-        # 9. Modern High-Tech HUD Telemetry Readouts (Clean Segoe UI / Cascadia Code)
-        # Top Box: [ WEB-FLUID: XX% ]
-        box_w = 96.0
-        box_h = 20.0
-        box_x = cx - 48.0
-        box_y = cy - r_inner + 8.0
+        # Hint: "Tap dose or custom to log"
+        painter.setPen(QColor(TOKENS.TEXT_MUTED))
+        hint_font = QFont("Segoe UI", 9, QFont.Weight.Normal)
+        painter.setFont(hint_font)
+        painter.drawText(QRectF(cx - 100, cy + 28, 200, 18), Qt.AlignmentFlag.AlignCenter, "Tap dose or custom to log")
 
-        painter.setPen(QPen(QColor(255, 255, 255, 220), 1.2))
-        painter.setBrush(QColor(0, 0, 0, 220))
-        painter.drawRect(QRectF(box_x, box_y, box_w, box_h))
-
-        painter.setPen(QColor("#ffffff"))
-        lbl_font = QFont("Cascadia Code", 8, QFont.Weight.Bold)
-        lbl_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.0)
-        painter.setFont(lbl_font)
-        painter.drawText(QRectF(box_x, box_y, box_w, box_h), Qt.AlignmentFlag.AlignCenter, f"WEB: {self.percentage}%")
-
-        # Bottom Telemetry: INTAKE & TARGET
-        bot_box_w = 170.0
-        bot_box_h = 24.0
-        bot_box_x = cx - 85.0
-        bot_box_y = cy + r_inner - 32.0
-
-        painter.setPen(QPen(QColor(255, 255, 255, 140), 1.0))
-        painter.setBrush(QColor(0, 0, 0, 220))
-        painter.drawRect(QRectF(bot_box_x, bot_box_y, bot_box_w, bot_box_h))
-
-        status_str = f"TARGETING: {self._current_ml:,} / {self._goal_ml:,} ML"
-        painter.setPen(QColor(255, 255, 255, 240))
-        bot_font = QFont("Cascadia Code", 7, QFont.Weight.Bold)
-        bot_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 0.8)
-        painter.setFont(bot_font)
-        painter.drawText(QRectF(bot_box_x, bot_box_y, bot_box_w, bot_box_h), Qt.AlignmentFlag.AlignCenter, status_str)
-
-    def _paint_flank_cells(self, painter: QPainter, cx: float, cy: float, r: float, is_left: bool):
-        """Draws the vertical curved segmented charge bars on the flanks like in the reference image."""
-        num_cells = 4
-        cell_span = 7.0
-        gap = 2.5
-        base_angle = 180.0 if is_left else 0.0
-
+    def _paint_chamber_squiggles(self, painter: QPainter, cx: float, cy: float, r_main: float):
+        """Paints Spider-Verse electric squiggle arcs radiating at the crown."""
         painter.save()
-        painter.setBrush(QColor(255, 255, 255, 210))
-        painter.setPen(Qt.PenStyle.NoPen)
+        # Squiggle rays radiating outward above the chamber
+        squiggles_deg = [130.0, 105.0, 75.0, 50.0]
+        pulse = math.sin(self._phase * 2.0) * 2.0
 
-        rect = QRectF(cx - r, cy - r, r * 2, r * 2)
+        for i, deg in enumerate(squiggles_deg):
+            rad = math.radians(deg)
+            cos_a = math.cos(rad)
+            sin_a = math.sin(rad)
+            perp_x = -sin_a
+            perp_y = cos_a
 
-        for i in range(num_cells):
-            start = (base_angle - 15.0) + (i * (cell_span + gap))
-            pen = QPen(QColor(255, 255, 255, 200), 3.5)
-            painter.setPen(pen)
-            painter.drawArc(rect, int(start * 16), int(cell_span * 16))
+            r0 = r_main + 12.0
+            r_len = 18.0 + pulse + (i % 2) * 4.0
+            kink = 4.0 if i % 2 == 0 else -4.0
 
-        painter.restore()
+            p0 = QPointF(cx + cos_a * r0, cy - sin_a * r0)
+            p1 = QPointF(cx + cos_a * (r0 + r_len * 0.4) + perp_x * kink,
+                         cy - sin_a * (r0 + r_len * 0.4) + perp_y * kink)
+            p2 = QPointF(cx + cos_a * (r0 + r_len * 0.7) - perp_x * (kink * 0.8),
+                         cy - sin_a * (r0 + r_len * 0.7) - perp_y * (kink * 0.8))
+            p3 = QPointF(cx + cos_a * (r0 + r_len), cy - sin_a * (r0 + r_len))
 
-    def _paint_chevrons(self, painter: QPainter, x: float, y: float, is_left: bool):
-        """Draws the tactical chevron brackets flanking the eye lenses."""
-        painter.save()
-        pen = QPen(QColor(255, 255, 255, 220), 1.4)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
+            path = QPainterPath()
+            path.moveTo(p0)
+            path.cubicTo(p1, p2, p3)
 
-        d = -1.0 if is_left else 1.0
-        for i in range(3):
-            ox = x + (i * 5.0 * d)
-            p1 = QPointF(ox, y - 8.0)
-            p2 = QPointF(ox + (4.0 * d), y)
-            p3 = QPointF(ox, y + 8.0)
-            painter.drawPolyline([p1, p2, p3])
+            # Cyan chromatic shift underlay
+            painter.setPen(QPen(QColor(0, 240, 255, 120), 1.6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            painter.drawPath(path)
 
-        painter.restore()
-
-    def _paint_spidey_eye_reticle(self, painter: QPainter, cx: float, cy: float):
-        """
-        Renders the iconic stylized Spider-Man angular eye lenses in laser-cut white
-        with precision polygonal lines.
-        """
-        painter.save()
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-
-        # Left Eye Polygon
-        # Angular convex eye polygon with sharp outer flare
-        left_eye = [
-            QPointF(cx - 24, cy - 11),  # Top outer corner
-            QPointF(cx - 7, cy - 14),   # Top inner corner
-            QPointF(cx - 5, cy + 8),    # Bottom inner corner
-            QPointF(cx - 20, cy + 12),  # Bottom outer corner
-            QPointF(cx - 26, cy + 1),   # Lateral outer flare point
-        ]
-
-        # Right Eye Polygon (symmetric mirror)
-        right_eye = [
-            QPointF(cx + 24, cy - 11),
-            QPointF(cx + 7, cy - 14),
-            QPointF(cx + 5, cy + 8),
-            QPointF(cx + 20, cy + 12),
-            QPointF(cx + 26, cy + 1),
-        ]
-
-        # Fill with subtle holographic glow
-        pulse_alpha = int(180 + (math.sin(self._phase * 2.0) * 45))
-        painter.setBrush(QColor(255, 255, 255, 220))
-        painter.setPen(QPen(QColor(255, 255, 255, 255), 2.0))
-
-        painter.drawPolygon(left_eye)
-        painter.drawPolygon(right_eye)
-
-        # Crisp inner lens pupil line
-        painter.setPen(QPen(QColor(0, 0, 0, 240), 1.5))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawPolygon(left_eye)
-        painter.drawPolygon(right_eye)
-
-        painter.setPen(QPen(QColor(255, 255, 255, pulse_alpha), 1.5))
-        painter.drawPolygon(left_eye)
-        painter.drawPolygon(right_eye)
+            # Neon gold / magenta electric squiggle
+            color_sense = QColor("#ff1493") if i % 2 == 1 else QColor("#d9a548")
+            painter.setPen(QPen(color_sense, 2.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            painter.drawPath(path)
 
         painter.restore()

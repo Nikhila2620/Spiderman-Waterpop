@@ -82,7 +82,8 @@ class StreakTracker:
         Calculates remaining cooldown seconds with immunity to clock drift,
         system reboots, and sleep/resume (Section 3.3).
         """
-        cooldown_secs = max(30, int(self.settings.cooldown_minutes or 30)) * 60
+        cooldown_mins = self.settings.cooldown_minutes if self.settings.cooldown_minutes is not None else 30
+        cooldown_secs = max(0, int(cooldown_mins)) * 60
 
         last_wall = self.settings.last_log_wall_utc
         last_mono = self.settings.last_log_mono

@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (
     QProgressBar,
 )
 
+from src.installer_gui import get_windows_special_folder
+
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\SpiderManWaterBuddy"
 
@@ -34,12 +36,21 @@ class UninstallerDialog(QDialog):
         self.setFixedSize(480, 260)
         self.setStyleSheet("""
             QDialog {
-                background-color: #12101a;
-                color: #f8fafc;
+                background-color: #0b0c10;
+                color: #f5f6f9;
                 font-family: 'Segoe UI', -apple-system, sans-serif;
             }
-            QLabel { color: #f1f5f9; }
-            QCheckBox { color: #cbd5e1; font-size: 13px; spacing: 8px; }
+            QLabel { color: #f5f6f9; }
+            QCheckBox { color: #c5bfab; font-size: 13px; spacing: 8px; font-weight: 600; }
+            QCheckBox::indicator {
+                width: 17px;
+                height: 17px;
+                border: 1.5px solid #4a3e1b;
+                border-radius: 4px;
+                background-color: #12141a;
+            }
+            QCheckBox::indicator:hover { border-color: #d4af37; }
+            QCheckBox::indicator:checked { background-color: #d4af37; border: 1.5px solid #f5d77f; }
             QPushButton {
                 font-weight: 700;
                 border-radius: 8px;
@@ -55,12 +66,12 @@ class UninstallerDialog(QDialog):
         layout.setSpacing(14)
 
         title = QLabel("Uninstall Spider-Man Water Buddy")
-        title.setStyleSheet("font-size: 16px; font-weight: 800; color: #f43f5e;")
+        title.setStyleSheet("font-size: 17px; font-weight: 900; color: #d4af37; letter-spacing: 0.5px;")
         layout.addWidget(title)
 
         desc = QLabel("Are you sure you want to remove Spider-Man Water Buddy from your computer?")
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #cbd5e1; font-size: 13px;")
+        desc.setStyleSheet("color: #c5bfab; font-size: 13px;")
         layout.addWidget(desc)
 
         self.chk_delete_settings = QCheckBox("Also delete my personal settings and hydration history")
@@ -71,14 +82,41 @@ class UninstallerDialog(QDialog):
 
         btn_box = QHBoxLayout()
         self.btn_cancel = QPushButton("Cancel")
-        self.btn_cancel.setStyleSheet("background-color: #27223b; color: #cbd5e1; border: 1px solid #41385f;")
+        self.btn_cancel.setStyleSheet("""
+            QPushButton {
+                background-color: #181b24;
+                color: #dcd8cc;
+                border: 1px solid #4a3e1b;
+                border-radius: 8px;
+                padding: 9px 18px;
+            }
+            QPushButton:hover {
+                border-color: #d4af37;
+                background-color: #222633;
+                color: #ffffff;
+            }
+        """)
         self.btn_cancel.clicked.connect(self.reject)
         btn_box.addWidget(self.btn_cancel)
 
         btn_box.addStretch()
 
         self.btn_uninstall = QPushButton("Uninstall Now")
-        self.btn_uninstall.setStyleSheet("background-color: #e11d48; color: #ffffff; border: 1px solid #f43f5e;")
+        self.btn_uninstall.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #d4af37, stop: 1 #b89326);
+                color: #0b0c10;
+                font-weight: 900;
+                font-size: 13px;
+                border: 1px solid #f5d77f;
+                border-radius: 8px;
+                padding: 9px 20px;
+            }
+            QPushButton:hover {
+                background: #e8c459;
+                border-color: #ffe394;
+            }
+        """)
         self.btn_uninstall.clicked.connect(self._do_uninstall)
         btn_box.addWidget(self.btn_uninstall)
 
@@ -100,14 +138,13 @@ class UninstallerDialog(QDialog):
                 pass
 
             # 3. Remove Desktop shortcut
-            desktop = Path(os.environ.get("USERPROFILE", "")) / "Desktop"
+            desktop = get_windows_special_folder("desktop")
             ds_link = desktop / "Spider-Man Water Buddy.lnk"
             if ds_link.exists():
                 ds_link.unlink()
 
             # 4. Remove Start Menu shortcut
-            appdata = Path(os.environ.get("APPDATA", ""))
-            start_menu = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Spider-Man Water Buddy.lnk"
+            start_menu = get_windows_special_folder("programs") / "Spider-Man Water Buddy.lnk"
             if start_menu.exists():
                 start_menu.unlink()
 

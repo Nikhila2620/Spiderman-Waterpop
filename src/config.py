@@ -167,6 +167,7 @@ class ConfigManager:
             self.settings_file = self.settings_dir / "settings.json"
 
         self.backup_file = self.settings_dir / "settings.backup.1"
+        self._last_backup_time = 0.0
         self.settings = AppSettings()
         self.corruption_detected = False
         self.recovered_from_backup = False
@@ -316,14 +317,17 @@ class ConfigManager:
                 f.flush()
                 os.fsync(f.fileno())
 
-            # 2. Rotate backups before replacing current settings
-            self._rotate_backups()
+            # 2. Rotate backups before replacing current settings (rate-limited to preserve history)
+            now = time.time()
+            backup1 = self._get_backup_path(1)
+            if not backup1.exists() or (now - self._last_backup_time > 60.0):
+                self._rotate_backups()
+                self._last_backup_time = now
 
             # 3. Atomic replace
             os.replace(temp_file, self.settings_file)
 
             # 4. Ensure at least backup.1 exists
-            backup1 = self._get_backup_path(1)
             if not backup1.exists() and self.settings_file.exists():
                 shutil.copy2(self.settings_file, backup1)
 

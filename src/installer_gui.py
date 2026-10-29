@@ -34,27 +34,52 @@ PUBLISHER = "Antigravity"
 UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\SpiderManWaterBuddy"
 
 
+def get_windows_special_folder(folder_name: str) -> Path:
+    """Safely retrieves special Windows shell folders (handling OneDrive Desktop redirection)."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        csidl_map = {"desktop": 0x0010, "programs": 0x0002}
+        if folder_name.lower() in csidl_map:
+            buf = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
+            ctypes.windll.shell32.SHGetFolderPathW(None, csidl_map[folder_name.lower()], None, 0, buf)
+            if buf.value:
+                return Path(buf.value)
+    except Exception:
+        pass
+    if folder_name.lower() == "desktop":
+        onedrive = os.environ.get("OneDrive")
+        if onedrive and (Path(onedrive) / "Desktop").exists():
+            return Path(onedrive) / "Desktop"
+        return Path.home() / "Desktop"
+    elif folder_name.lower() == "programs":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            return Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+    return Path.home()
+
+
 def create_windows_shortcut(target_exe: Path, shortcut_path: Path, icon_path: Path):
-    """Creates a Windows .lnk shortcut safely via PowerShell WScript.Shell with parameterized arguments."""
-    ps_script = (
-        "param($target, $lnk, $icon, $workdir); "
-        "$WshShell = New-Object -ComObject WScript.Shell; "
-        "$Shortcut = $WshShell.CreateShortcut($lnk); "
-        "$Shortcut.TargetPath = $target; "
-        "$Shortcut.IconLocation = \"$icon, 0\"; "
-        "$Shortcut.WorkingDirectory = $workdir; "
-        "$Shortcut.Save();"
+    """Creates a Windows .lnk shortcut safely via PowerShell WScript.Shell with properly escaped paths."""
+    shortcut_path.parent.mkdir(parents=True, exist_ok=True)
+    target = str(target_exe.resolve()).replace("'", "''")
+    lnk = str(shortcut_path.resolve()).replace("'", "''")
+    icon = str(icon_path.resolve()).replace("'", "''")
+    workdir = str(target_exe.parent.resolve()).replace("'", "''")
+
+    ps_cmd = (
+        f"$s = (New-Object -ComObject WScript.Shell).CreateShortcut('{lnk}'); "
+        f"$s.TargetPath = '{target}'; "
+        f"$s.IconLocation = '{icon}, 0'; "
+        f"$s.WorkingDirectory = '{workdir}'; "
+        f"$s.Save();"
     )
     subprocess.run(
         [
             "powershell",
             "-NoProfile",
             "-ExecutionPolicy", "Bypass",
-            "-Command", ps_script,
-            "-target", str(target_exe.resolve()),
-            "-lnk", str(shortcut_path.resolve()),
-            "-icon", str(icon_path.resolve()),
-            "-workdir", str(target_exe.parent.resolve()),
+            "-Command", ps_cmd,
         ],
         check=True,
         creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
@@ -214,15 +239,21 @@ class InstallWorker(QThread):
             self.progressUpdated.emit(80, "Creating Windows shortcuts...")
             # Desktop shortcut
             if self.desktop_shortcut:
-                desktop = Path(os.environ.get("USERPROFILE", "")) / "Desktop"
-                ds_path = desktop / f"{APP_NAME}.lnk"
-                create_windows_shortcut(target_exe, ds_path, icon_path)
+                try:
+                    desktop = get_windows_special_folder("desktop")
+                    ds_path = desktop / f"{APP_NAME}.lnk"
+                    create_windows_shortcut(target_exe, ds_path, icon_path)
+                except Exception as e:
+                    print(f"[WARN] Desktop shortcut skipped: {e}")
 
             # Start Menu shortcut
             if self.start_menu:
-                appdata = Path(os.environ.get("APPDATA", ""))
-                sm_path = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / f"{APP_NAME}.lnk"
-                create_windows_shortcut(target_exe, sm_path, icon_path)
+                try:
+                    sm_dir = get_windows_special_folder("programs")
+                    sm_path = sm_dir / f"{APP_NAME}.lnk"
+                    create_windows_shortcut(target_exe, sm_path, icon_path)
+                except Exception as e:
+                    print(f"[WARN] Start Menu shortcut skipped: {e}")
 
             self.progressUpdated.emit(90, "Registering Windows uninstaller...")
             uninstaller_exe = self.target_dir / "uninstall.exe"
@@ -266,21 +297,50 @@ class InstallerWindow(QDialog):
         layout.setSpacing(14)
 
         title = QLabel(f"🕷️ Install {APP_NAME}")
-        title.setStyleSheet(f"font-size: 19px; font-weight: 900; color: {TOKENS.ACCENT_RED};")
+        title.setStyleSheet("font-size: 20px; font-weight: 900; color: #d4af37; letter-spacing: 0.5px;")
         layout.addWidget(title)
 
         desc = QLabel("Install your friendly neighbourhood desktop companion.")
-        desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 13px;")
+        desc.setStyleSheet("color: #c5bfab; font-size: 13px;")
         layout.addWidget(desc)
 
         # Destination Folder
-        layout.addWidget(QLabel("Installation Directory:"))
+        lbl_dir = QLabel("Installation Directory:")
+        lbl_dir.setStyleSheet("color: #f5f6f9; font-weight: 600; font-size: 13px;")
+        layout.addWidget(lbl_dir)
         path_box = QHBoxLayout()
         self.edit_path = QLineEdit(str(self.default_install_dir))
+        self.edit_path.setStyleSheet("""
+            QLineEdit {
+                background-color: #12141a;
+                color: #f5f6f9;
+                border: 1.5px solid #3d341a;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border: 1.5px solid #d4af37;
+            }
+        """)
         path_box.addWidget(self.edit_path)
 
         btn_browse = QPushButton("Browse...")
-        btn_browse.setStyleSheet(f"background-color: {TOKENS.BG_CARD}; color: {TOKENS.TEXT_SECONDARY}; border: 1px solid {TOKENS.BORDER_DEFAULT};")
+        btn_browse.setStyleSheet("""
+            QPushButton {
+                background-color: #181b24;
+                color: #dcd8cc;
+                border: 1px solid #4a3e1b;
+                border-radius: 6px;
+                padding: 6px 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                border-color: #d4af37;
+                background-color: #222633;
+                color: #ffffff;
+            }
+        """)
         btn_browse.clicked.connect(self._browse_dir)
         path_box.addWidget(btn_browse)
         layout.addLayout(path_box)
@@ -301,11 +361,25 @@ class InstallerWindow(QDialog):
         # Progress bar
         self.progress = QProgressBar()
         self.progress.setVisible(False)
-        self.progress.setFixedHeight(18)
+        self.progress.setFixedHeight(20)
+        self.progress.setStyleSheet("""
+            QProgressBar {
+                background-color: #12141a;
+                border: 1px solid #3d341a;
+                border-radius: 6px;
+                text-align: center;
+                color: #f5f6f9;
+                font-weight: 700;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #d4af37, stop: 1 #f5d77f);
+                border-radius: 5px;
+            }
+        """)
         layout.addWidget(self.progress)
 
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet(f"color: {TOKENS.ACCENT_RED_HOVER}; font-size: 12px; font-weight: 600;")
+        self.status_label.setStyleSheet("color: #e5c158; font-size: 12px; font-weight: 600;")
         layout.addWidget(self.status_label)
 
         layout.addStretch()
@@ -313,20 +387,46 @@ class InstallerWindow(QDialog):
         # Action Buttons
         btn_box = QHBoxLayout()
         self.btn_cancel = QPushButton("Cancel")
-        self.btn_cancel.setStyleSheet(f"background-color: {TOKENS.BG_CARD}; color: {TOKENS.TEXT_SECONDARY}; border: 1px solid {TOKENS.BORDER_DEFAULT};")
+        self.btn_cancel.setStyleSheet("""
+            QPushButton {
+                background-color: #181b24;
+                color: #dcd8cc;
+                border: 1px solid #4a3e1b;
+                border-radius: 8px;
+                padding: 9px 18px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                border-color: #d4af37;
+                background-color: #222633;
+                color: #ffffff;
+            }
+        """)
         self.btn_cancel.clicked.connect(self.reject)
         btn_box.addWidget(self.btn_cancel)
 
         btn_box.addStretch()
 
         self.btn_install = QPushButton("Install Now ⚡")
-        self.btn_install.setStyleSheet(f"""
-            QPushButton {{
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {TOKENS.ACCENT_RED}, stop: 1 {TOKENS.ACCENT_RED_ACTIVE});
-                color: #ffffff;
-                border: 1px solid {TOKENS.ACCENT_RED_HOVER};
-            }}
-            QPushButton:hover {{ background: {TOKENS.ACCENT_RED_HOVER}; }}
+        self.btn_install.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #d4af37, stop: 1 #b89326);
+                color: #0b0c10;
+                font-weight: 900;
+                font-size: 13.5px;
+                border: 1px solid #f5d77f;
+                border-radius: 8px;
+                padding: 10px 22px;
+            }
+            QPushButton:hover {
+                background: #e8c459;
+                border-color: #ffe394;
+            }
+            QPushButton:disabled {
+                background: #2d2618;
+                color: #7a7050;
+                border: 1px solid #1f1a10;
+            }
         """)
         self.btn_install.clicked.connect(self._start_install)
         btn_box.addWidget(self.btn_install)

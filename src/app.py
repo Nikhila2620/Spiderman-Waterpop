@@ -194,6 +194,7 @@ class SpiderManWaterBuddyApp(QObject):
         self.companion.snoozeRequested.connect(self.engine.on_user_snoozed)
         self.companion.declined.connect(self.engine.on_user_declined)
         self.companion.dismissed.connect(self.engine.on_user_dismissed)
+        self.companion.openDashboardRequested.connect(self.show_dashboard)
 
         # Dashboard settings updates to Companion
         self.dashboard.settingsChanged.connect(self._on_settings_updated)
@@ -309,7 +310,7 @@ class SpiderManWaterBuddyApp(QObject):
         )
 
     def _on_settings_updated(self):
-        self.companion.badge.setText(f"🕸️ {self.settings.companion_name.upper()} WATER BUDDY")
+        self.companion.badge.setText(f"🕷️ {self.settings.companion_name.upper()}")
         self.companion.spidey.set_animation_enabled(self.settings.animation_enabled)
         self.companion.spidey.set_performance_mode(self.settings.performance_mode)
         self.companion.reposition()

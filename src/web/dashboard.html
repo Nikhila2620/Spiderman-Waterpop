@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Spider-Man Waterpop</title>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@100..150,500..900&family=Instrument+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Caveat:wght@600;700&display=swap">
+<style>
+/* Layout: Peter Parker's sunlit comic desk. Left = the big readout, centre = a real glass bottle that fills, right = desk objects (pill organiser, index card, status tags). Flat graphic style: thick ink outlines, hard offset shadows. */
+:root{
+  --desk:#f5e24f; --desk-d:#e3cc27; --ink:#141a3a; --paper:#fffef6; --water:#3350ff; --water-l:#8a9cff;
+  --note:#ff9ec6; --led:#1fbf6a; --mute:#5a5f80; --spidey-red:#d6483f; --spidey-gold:#d9a548;
+  --display:'Anybody','Impact','Arial Black',system-ui,sans-serif; --body:'Instrument Sans','Segoe UI',system-ui,sans-serif; --mono:'DM Mono','Consolas',ui-monospace,monospace; --hand:'Caveat','Segoe Print','Comic Sans MS',cursive;
+  --line:3px solid var(--ink); --hard:5px 5px 0 var(--ink);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--desk);color:var(--ink);font:16px/1.5 var(--body);min-height:100vh;
+  background-image:radial-gradient(rgba(20,26,58,.09) 1.2px,transparent 1.4px);background-size:22px 22px;
+  padding-block:0 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--water);outline-offset:3px}
+.mono{font-family:var(--mono)}
+
+/* nav */
+.nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:calc(env(safe-area-inset-top,0px) + 18px)}
+.logo{font:800 28px/1 var(--display);font-stretch:130%;letter-spacing:-.02em;margin-right:auto;display:flex;gap:10px;align-items:center}
+.logo svg{width:26px;height:32px}
+.tab{background:transparent;border:var(--line);border-color:transparent;border-radius:12px;padding:8px 16px;font-weight:600}
+.tab:hover{border-color:var(--ink)}
+.tab[aria-current=page]{background:var(--ink);color:var(--desk)}
+.btn{background:var(--ink);color:var(--desk);border:var(--line);border-radius:14px;padding:12px 22px;font-weight:700;box-shadow:4px 4px 0 var(--water);transition:transform .08s,box-shadow .08s}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--water)}
+.btn:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--water)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none!important;box-shadow:2px 2px 0 var(--ink)!important}
+.ghost{background:var(--paper);border:var(--line);border-radius:12px;padding:8px 14px;font-weight:600;box-shadow:3px 3px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+.ghost:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.ghost:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.ghost.warn{background:var(--note)}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.14em;text-transform:uppercase}
+
+/* stage */
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,330px) minmax(0,1fr);gap:clamp(16px,3vw,40px);align-items:center;margin-top:30px}
+@media(max-width:1000px){.stage{grid-template-columns:minmax(0,1fr) minmax(220px,300px)}.objs{grid-column:1/-1}}
+@media(max-width:620px){.stage{grid-template-columns:minmax(0,1fr)}.bottle{order:-1;max-width:260px;margin:0 auto}}
+.read .pct{font:800 clamp(100px,14vw,190px)/.82 var(--display);font-stretch:140%;letter-spacing:-.05em;margin:12px 0 0;font-variant-numeric:tabular-nums;display:flex;align-items:flex-start}
+.read .pct sup{font-size:.28em;margin:.16em 0 0 .06em;letter-spacing:0}
+.amt{font:500 16px var(--mono);margin-top:16px}
+.amt b{background:var(--ink);color:var(--desk);padding:1px 8px;border-radius:6px;font-weight:500}
+.tagline{font:700 clamp(22px,3vw,32px)/1.1 var(--display);font-stretch:115%;margin:22px 0 0;max-width:14ch;text-wrap:balance}
+.doses{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
+.dose{background:var(--paper);border:var(--line);border-radius:999px;padding:7px 16px;font:500 14px var(--mono)}
+.dose[aria-pressed=true]{background:var(--water);color:#fff}
+.read .btn{margin-top:16px;font-size:18px;padding:16px 28px}
+.status{min-height:24px;margin-top:14px;font-weight:600;font-size:14px}
+.quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.custom{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+input[type=number],input[type=text],select{background:var(--paper);border:var(--line);border-radius:12px;color:var(--ink);padding:9px 12px;font:500 14px var(--mono);min-width:0}
+input:focus,select:focus{outline:3px solid var(--water);outline-offset:2px}
+.custom input{width:130px}
+
+/* bottle */
+.bottle{position:relative;justify-self:center;width:100%}
+.bottle svg{width:100%;height:auto;display:block;overflow:visible}
+
+/* desk objects */
+.objs{display:grid;gap:28px;min-width:0}
+@media(max-width:1000px){.objs{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}}
+.card{background:var(--paper);border:var(--line);border-radius:20px;padding:20px;box-shadow:var(--hard);position:relative;min-width:0}
+.card h2{font:800 17px/1.1 var(--display);font-stretch:125%;margin:0}
+.sub{color:var(--mute);font-size:14px;margin:4px 0 0}
+.organizer{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:16px}
+.cell{display:grid;gap:4px;justify-items:center;font:500 11px var(--mono)}
+.lid{width:100%;height:16px;border:var(--line);border-radius:8px 8px 3px 3px;background:var(--desk);display:grid;place-items:center;font-weight:500;font-size:10px;line-height:1}
+.well{width:100%;height:84px;border:var(--line);border-radius:4px 4px 12px 12px;background:#fff;position:relative;overflow:hidden}
+.well i{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(var(--water-l),var(--water));transition:height .9s cubic-bezier(.2,.8,.2,1);border-top:2px solid var(--ink)}
+.cell.today .lid{background:var(--note)}
+.cell.done .lid{background:var(--led);color:#fff}
+.index{background:#fff;transform:rotate(1.2deg);padding-top:34px;background-image:linear-gradient(transparent 31px,#cfd6ff 32px);background-size:100% 32px;background-position:0 30px}
+.index::before{content:"";position:absolute;top:-14px;left:50%;width:90px;height:28px;margin-left:-45px;background:rgba(255,158,198,.8);border:2px solid rgba(20,26,58,.25);transform:rotate(-3deg)}
+.log{list-style:none;margin:6px 0 0;padding:0;font:500 14px/32px var(--mono);max-height:132px;overflow:auto}
+.log li{display:flex;justify-content:space-between}
+.log li span:last-child{color:var(--water);font-weight:500}
+.tags{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tag{border:var(--line);border-radius:14px;background:var(--paper);padding:12px 14px;box-shadow:3px 3px 0 var(--ink);min-width:0}
+.tag .v{font:800 22px var(--display);font-stretch:115%;margin-top:6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.led{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--led);border:2px solid var(--ink);margin-right:8px;animation:blink 2s infinite}
+@keyframes blink{50%{opacity:.35}}
+.foot{margin-top:12px;font:500 13px var(--mono)}
+
+/* settings */
+.sheet{margin-top:34px}
+.sheet h1{font:800 clamp(38px,6vw,72px)/.9 var(--display);font-stretch:140%;letter-spacing:-.04em;margin:0}
+.stabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:22px}
+.stab{border:var(--line);border-bottom:0;border-radius:14px 14px 0 0;background:var(--desk-d);padding:10px 20px;font-weight:700;position:relative;top:3px}
+.stab[aria-selected=true]{background:var(--paper);z-index:2}
+.plate{background:var(--paper);border:var(--line);border-radius:0 20px 20px 20px;box-shadow:var(--hard);padding:clamp(20px,3vw,34px);position:relative}
+.plate::before,.plate::after{content:"";position:absolute;top:12px;width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:var(--desk-d)}
+.plate::before{right:14px}.plate::after{right:36px;display:none}
+.panel{display:none;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.panel.show{display:grid}
+.group{border:var(--line);border-radius:16px;padding:20px;min-width:0;background:#fff}
+.group h3{font:800 16px var(--display);font-stretch:125%;margin:0}
+.field{display:grid;gap:6px;margin-top:16px;font-weight:600;font-size:14px}
+.field input{width:100%}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px;font-weight:600;font-size:14px}
+.goalbig{font:800 44px/1 var(--display);font-stretch:130%;margin-top:14px;font-variant-numeric:tabular-nums}
+.goalbig small{font:500 14px var(--mono)}
+input[type=range]{width:100%;margin-top:12px;accent-color:var(--water);height:28px}
+.check{display:flex;gap:14px;align-items:flex-start;padding:10px 0;cursor:pointer;font-weight:600}
+.check input{appearance:none;flex:none;width:52px;height:28px;border:var(--line);border-radius:8px;background:var(--paper);position:relative;margin:0;cursor:pointer;transition:.15s}
+.check input::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:4px;background:var(--ink);transition:.15s}
+.check input:checked{background:var(--water)}
+.check input:checked::after{left:26px;background:#fff}
+.check small{display:block;color:var(--mute);font-weight:400;font-size:13px}
+.kv{display:grid;grid-template-columns:84px minmax(0,1fr);gap:8px 12px;margin:14px 0 0;font-size:14px}
+.kv dt{font-weight:700}.kv dd{margin:0;font:400 12px var(--mono);overflow-wrap:anywhere}
+.corners{display:grid;grid-template-columns:repeat(2,64px);gap:6px}
+.corners button{height:38px;border:var(--line);border-radius:10px;background:var(--paper)}
+.corners button[aria-pressed=true]{background:var(--note)}
+.savebar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:24px;padding-top:18px;border-top:2px dashed var(--ink);font:500 14px var(--mono)}
+
+/* sticky note companion */
+.note{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:9;width:min(290px,calc(100% - 36px));background:var(--note);border:var(--line);padding:26px 18px 18px;box-shadow:var(--hard);transform:translateY(40px) rotate(6deg);opacity:0;pointer-events:none;transition:transform .45s cubic-bezier(.2,1.4,.4,1),opacity .2s}
+.note.show{transform:rotate(-3deg);opacity:1;pointer-events:auto}
+.note::before{content:"";position:absolute;top:-12px;left:50%;width:70px;height:24px;margin-left:-35px;background:rgba(255,255,255,.7);border:2px solid rgba(20,26,58,.25);transform:rotate(2deg)}
+.note .who{font:500 11px var(--mono);letter-spacing:.14em}
+.note p{font:700 24px/1.1 var(--hand);margin:6px 0 12px}
+.note .btn{width:100%;box-shadow:3px 3px 0 #fff;padding:10px}
+.note .x{position:absolute;top:6px;right:10px;background:none;border:0;font-size:22px;font-weight:700}
+.sr{position:absolute;left:-9999px}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="nav">
+    <div class="logo">
+      <!-- Peter Parker Spider Flask Icon -->
+      <svg viewBox="0 0 26 32" aria-hidden="true">
+        <path d="M8 1h10v4l4 5v17a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V10l4-5z" fill="#fffef6" stroke="#141a3a" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M4 17h18v10a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" fill="#3350ff" stroke="#141a3a" stroke-width="2.5"/>
+        <circle cx="13" cy="23" r="2.5" fill="#fffef6"/>
+        <path d="M13 19v8M9 21l8 4M9 25l8-4" stroke="#fffef6" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      Spider-Man Waterpop
+    </div>
+    <button class="tab" id="sense" aria-pressed="true">🕷️ Spider-Sense: ON</button>
+    <button class="tab" data-view="dash" aria-current="page">Today</button>
+    <button class="tab" data-view="set">Settings</button>
+    <button class="btn" id="remind">⚡ Remind Now</button>
+  </header>
+
+  <main id="dash" data-pane>
+    <div class="stage">
+      <section class="read" aria-label="Today's hydration">
+        <div class="eyebrow">Spider Hydration Level</div>
+        <div class="pct"><span id="pct">0</span><sup>%</sup></div>
+        <div class="amt"><b id="vol">0</b> of <span id="goalT">2000</span> ml</div>
+        <p class="tagline" id="tag">Take the first sip, Hero.</p>
+        <div class="doses" id="doses" role="group" aria-label="Dose size">
+          <button class="dose" aria-pressed="false">150 ml</button><button class="dose" aria-pressed="true">250 ml</button><button class="dose" aria-pressed="false">350 ml</button><button class="dose" aria-pressed="false">500 ml</button>
+        </div>
+        <button class="btn" id="drank">💧 I drank 250 ml</button>
+        <div class="status" id="status" aria-live="polite">Ready to log hydration</div>
+        <div class="quick">
+          <button class="ghost" data-add="200">+200 Glass</button><button class="ghost" data-add="350">+350 Flask</button><button class="ghost" data-add="500">+500 Canteen</button>
+        </div>
+        <div class="custom">
+          <input type="number" id="custom" placeholder="Custom ml" min="50" max="2000" aria-label="Custom amount in millilitres">
+          <button class="ghost" id="logc">Log</button><button class="ghost warn" id="reset">Reset today</button>
+        </div>
+      </section>
+
+      <div class="bottle" aria-hidden="true">
+        <svg viewBox="0 0 330 680">
+          <defs>
+            <clipPath id="inside"><path d="M108 62 L108 98 C108 132 64 142 64 192 L64 590 Q64 626 100 626 L200 626 Q236 626 236 590 L236 192 C236 142 192 132 192 98 L192 62 Z"/></clipPath>
+            <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a9cff"/><stop offset="1" stop-color="#3350ff"/></linearGradient>
+            <filter id="blur"><feGaussianBlur stdDeviation="5"/></filter>
+          </defs>
+          <ellipse cx="160" cy="646" rx="118" ry="14" fill="#141a3a" opacity=".22" filter="url(#blur)"/>
+          <ellipse cx="150" cy="634" rx="112" ry="16" fill="#e3cc27" stroke="#141a3a" stroke-width="3"/>
+          <path d="M108 62 L108 98 C108 132 64 142 64 192 L64 590 Q64 626 100 626 L200 626 Q236 626 236 590 L236 192 C236 142 192 132 192 98 L192 62 Z" fill="#fffef6" fill-opacity=".55"/>
+          <g clip-path="url(#inside)">
+            <path id="wave" d="" fill="url(#wg)"/>
+            <path id="wave2" d="" fill="none" stroke="#141a3a" stroke-width="3"/>
+            <g id="bub" fill="none" stroke="#fff" stroke-width="2" opacity=".8"></g>
+          </g>
+          <path d="M108 62 L108 98 C108 132 64 142 64 192 L64 590 Q64 626 100 626 L200 626 Q236 626 236 590 L236 192 C236 142 192 132 192 98 L192 62 Z" fill="none" stroke="#141a3a" stroke-width="4" stroke-linejoin="round"/>
+          <rect x="76" y="210" width="9" height="260" rx="4.5" fill="#fff" opacity=".7"/>
+          <rect x="76" y="486" width="9" height="30" rx="4.5" fill="#fff" opacity=".7"/>
+          <rect x="106" y="14" width="88" height="52" rx="12" fill="#141a3a"/>
+          <g stroke="#f5e24f" stroke-width="3" stroke-linecap="round"><path d="M122 26v28M136 26v28M150 26v28M164 26v28M178 26v28"/></g>
+          <g id="ticks" font-family="DM Mono, monospace" font-size="13" fill="#141a3a"></g>
+        </svg>
+      </div>
+
+      <div class="objs">
+        <section class="card" aria-labelledby="wk">
+          <h2 id="wk">This week</h2><p class="sub">7-Day Continuous Thread Network</p>
+          <div class="organizer" id="org"></div>
+        </section>
+        <section class="card index" aria-labelledby="lg">
+          <h2 id="lg" class="sr">Today's log</h2>
+          <div class="eyebrow">Today's entries</div>
+          <ul class="log" id="log"></ul>
+          <div class="foot">Reminders completed today: <b id="rem">0</b></div>
+        </section>
+        <div class="tags">
+          <div class="tag"><div class="eyebrow">Status</div><div class="v" id="sysState"><span class="led"></span>Active</div></div>
+          <div class="tag"><div class="eyebrow">Next Trigger</div><div class="v" id="next">--:--</div></div>
+          <div class="tag"><div class="eyebrow">Weekly avg</div><div class="v" id="avgMetric">1.8 L</div></div>
+          <div class="tag"><div class="eyebrow">Peak Intake</div><div class="v" id="peakMetric">2:15 PM</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <main id="set" data-pane hidden>
+    <section class="sheet">
+      <h1>Settings</h1>
+      <div class="stabs" role="tablist" aria-label="Settings sections">
+        <button class="stab" role="tab" aria-selected="true" data-tab="general">General</button>
+        <button class="stab" role="tab" aria-selected="false" data-tab="reminders">Reminders</button>
+        <button class="stab" role="tab" aria-selected="false" data-tab="appearance">Appearance</button>
+        <button class="stab" role="tab" aria-selected="false" data-tab="advanced">Advanced</button>
+      </div>
+      <div class="plate">
+        <div class="panel show" id="p-general">
+          <div class="group"><h3>Personalization</h3><p class="sub">Greetings and companion identity</p>
+            <div class="field"><label for="cn">Companion name</label><input type="text" id="cn" value="Spider-Man"></div>
+            <div class="field"><label for="pn">Your preferred name</label><input type="text" id="pn" value="Hero"></div></div>
+          <div class="group"><h3>Hydration target</h3><p class="sub">Daily goal in millilitres</p>
+            <div class="goalbig"><span id="goalOut">2000</span> <small>ml / day</small></div>
+            <input type="range" id="goal" min="500" max="5000" step="50" value="2000" aria-label="Daily goal in millilitres"></div>
+          <div class="group"><h3>Windows</h3><p class="sub">Startup and window layering</p>
+            <label class="check"><input type="checkbox" id="chk_startup"><span>Launch when Windows starts</span></label>
+            <label class="check"><input type="checkbox" id="chk_minimized"><span>Start minimized in the tray</span></label>
+            <label class="check"><input type="checkbox" id="chk_ontop" checked><span>Keep companion on top</span></label></div>
+        </div>
+        <div class="panel" id="p-reminders">
+          <div class="group"><h3>Schedule</h3><p class="sub">Spider-Sense reminder frequency</p>
+            <div class="row"><label for="int">Interval:</label><select id="int"><option value="15">15 min</option><option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option></select></div>
+            <div class="row"><label for="from">Quiet Hours From</label><input type="text" id="from" value="22:00" size="6"><label for="to">to</label><input type="text" id="to" value="08:00" size="6"></div></div>
+          <div class="group"><h3>Behaviour</h3><p class="sub">Audio cues and alert responses</p>
+            <label class="check"><input type="checkbox" id="chk_sound" checked><span>Audio cues<small>Play subtle acoustic sounds on reminders</small></span></label>
+            <label class="check"><input type="checkbox" id="chk_quiet"><span>Enable quiet hours</span></label></div>
+        </div>
+        <div class="panel" id="p-appearance">
+          <div class="group"><h3>Screen placement</h3><p class="sub">Corner anchor for Spider-Man</p>
+            <div class="row"><div class="corners" id="corners"><button aria-pressed="false" aria-label="Top left"></button><button aria-pressed="true" aria-label="Top right"></button><button aria-pressed="false" aria-label="Bottom left"></button><button aria-pressed="false" aria-label="Bottom right"></button></div><span class="eyebrow" id="cornerName">top-right</span></div></div>
+          <div class="group"><h3>Motion and physics</h3><p class="sub">Swing, awareness, power use</p>
+            <label class="check"><input type="checkbox" id="chk_clickthrough"><span>Click-through<small>Toggle anytime with Ctrl+Alt+W</small></span></label>
+            <label class="check"><input type="checkbox" id="chk_anim" checked><span>Pendulum swinging animations</span></label>
+            <label class="check"><input type="checkbox" id="chk_perf"><span>Performance mode<small>Lower CPU and GPU use on battery</small></span></label></div>
+          <div class="group"><h3>Reaction previews</h3><p class="sub">Test Spider-Man's interactive sequences</p>
+            <div class="row"><button class="ghost" id="btnTestHappy">🎉 Celebration</button><button class="ghost" id="btnTestNo">😅 Disappointed</button></div></div>
+        </div>
+        <div class="panel" id="p-advanced">
+          <div class="group"><h3>Application</h3><p class="sub">Version and system paths</p>
+            <dl class="kv"><dt>Version</dt><dd>2.0.0 (Lab Logbook Edition)</dd><dt>Framework</dt><dd>PySide6 (Qt 6.7) / Python 3.11</dd><dt>Rendering</dt><dd>Neo-Brutalist Comic WebEngine</dd><dt>Config</dt><dd id="cfgPath">%APPDATA%\SpiderManWaterBuddy\settings.json</dd></dl></div>
+          <div class="group"><h3>Backup and safety</h3><p class="sub">Revert changes or restore defaults</p>
+            <div class="row"><button class="ghost" id="btnRestoreBackup">Restore backup</button><button class="ghost warn" id="resetAll">Reset all defaults</button></div></div>
+        </div>
+        <div class="savebar"><span id="saved">Settings up to date.</span><button class="btn" id="save">Apply and save</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<aside class="note" id="note" role="status" aria-live="polite">
+  <button class="x" id="bx" aria-label="Dismiss">×</button>
+  <div class="who"><span id="bname">SPIDER-MAN</span> LEFT YOU A NOTE</div>
+  <p id="bmsg">Hey Hero, time for a sip! 💧</p>
+  <button class="btn" id="byes">💧 I drank 250 ml</button>
+</aside>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)}, $$=function(s){return [].slice.call(document.querySelectorAll(s))};
+  var goal=2000,dose=250,total=500,rem=0,entries=[{t:'09:15',ml:250},{t:'11:30',ml:250}];
+  var week=[0.75,0.9,1.0,0.65,0.85,0.5,0.25];
+  var days=['M','T','W','T','F','S','S'];
+
+  /* ---- bottle water animation ---- */
+  var BOT=626,TOP=176,lvl=0,amp=5,T=0,bubs=[];
+  var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var bub=$('#bub');
+  for(var i=0;i<9;i++){
+    var c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('r',2+Math.random()*3.5);
+    bub.appendChild(c);
+    bubs.push({el:c,x:80+Math.random()*140,y:Math.random(),s:.05+Math.random()*.08,p:Math.random()*6});
+  }
+  function frame(){
+    T+=.03;var p=Math.min(1,total/goal);
+    lvl+=(p-lvl)*.05;amp+=(5-amp)*.03;
+    var y=BOT-(BOT-TOP)*lvl+ (lvl<.005?30:0),d='M40 '+y,l='';
+    for(var x=40;x<=260;x+=5){
+      var yy=y+Math.sin(x*.045+T*2)*amp+Math.sin(x*.09-T*1.3)*amp*.4;
+      d+=' L'+x+' '+yy.toFixed(1);
+      l+=(x===40?'M':' L')+x+' '+yy.toFixed(1);
+    }
+    $('#wave').setAttribute('d',d+' L260 640 L40 640 Z');
+    $('#wave2').setAttribute('d',l);
+    bubs.forEach(function(b){
+      b.y-=b.s*.01*(still?0:1);
+      if(b.y<0)b.y=1;
+      var by=y+(BOT-y)*b.y;
+      b.el.setAttribute('cx',b.x+Math.sin(T+b.p)*6);
+      b.el.setAttribute('cy',by);
+      b.el.style.display=by<y+8?'none':'';
+    });
+    if(!still)requestAnimationFrame(frame);
+  }
+  frame();
+  if(still)setInterval(frame,400);
+
+  function drawTicks(){
+    var h='';
+    [.25,.5,.75,1].forEach(function(f){
+      var y=BOT-(BOT-TOP)*f;
+      h+='<path d="M236 '+y+'h16" stroke="#141a3a" stroke-width="3" stroke-linecap="round"/><text x="258" y="'+(y+4)+'">'+Math.round(goal*f)+'</text>';
+    });
+    $('#ticks').innerHTML=h+'<text x="258" y="'+(BOT+4)+'">ml</text>';
+  }
+
+  /* ---- UI Rendering ---- */
+  var taglines=[
+    [0,'Take the first sip, Hero.'],
+    [25,'Spider-Sense tingles: Good start.'],
+    [50,'Halfway there. Keep hydrated!'],
+    [75,'Nearly full. Web fluid peaking.'],
+    [100,'Daily goal reached! Great job!']
+  ];
+
+  function render(){
+    var p=goal>0?Math.min(1,total/goal):0, pc=Math.round(p*100);
+    $('#pct').textContent=pc;
+    $('#vol').textContent=total;
+    $('#goalT').textContent=goal;
+    $('#rem').textContent=rem;
+    $('#drank').textContent='💧 I drank '+dose+' ml';
+    $('#byes').textContent='💧 I drank '+dose+' ml';
+
+    var t=taglines[0][1];
+    taglines.forEach(function(x){if(pc>=x[0])t=x[1];});
+    $('#tag').textContent=t;
+
+    $('#log').innerHTML=entries.slice().reverse().map(function(e){
+      return '<li><span>'+e.t+'</span><span>+'+e.ml+' ml</span></li>';
+    }).join('')||'<li><span>Nothing logged yet</span><span></span></li>';
+
+    var idx=(new Date().getDay()+6)%7;
+    $('#org').innerHTML=days.map(function(d,i){
+      var f=i<idx?week[i]:(i===idx?p:0);
+      return '<div class="cell '+(i===idx?'today':'')+(f>=1?' done':'')+'"><div class="lid">'+d+'</div><div class="well" title="'+Math.round(f*100)+'%"><i style="height:'+Math.round(Math.min(1,f)*100)+'%"></i></div></div>';
+    }).join('');
+
+    drawTicks();
+  }
+
+  /* ---- Native Python Bridge Hook ---- */
+  function sendToPython(action, data){
+    if(window.pybridge && typeof window.pybridge.dispatch === 'function'){
+      window.pybridge.dispatch(action, JSON.stringify(data||{}));
+    } else {
+      // Local fallback for standalone browser preview
+      console.log('Action -> Python:', action, data);
+    }
+  }
+
+  function add(ml){
+    amp=16;
+    sendToPython('log_water', {amount: ml});
+  }
+
+  $$('.dose').forEach(function(b){
+    b.onclick=function(){
+      $$('.dose').forEach(function(x){x.setAttribute('aria-pressed','false')});
+      b.setAttribute('aria-pressed','true');
+      dose=parseInt(b.textContent,10);
+      render();
+    };
+  });
+
+  $('#drank').onclick=function(){add(dose);};
+  $$('[data-add]').forEach(function(b){b.onclick=function(){add(+b.dataset.add);};});
+  $('#logc').onclick=function(){
+    var v=parseInt($('#custom').value,10);
+    if(v>=50 && v<=2000){
+      add(v);
+      $('#custom').value='';
+    } else {
+      $('#status').textContent='Enter an amount between 50 and 2000 ml';
+    }
+  };
+  $('#reset').onclick=function(){sendToPython('reset_today');};
+
+  /* Navigation */
+  function view(v){
+    $$('[data-pane]').forEach(function(p){p.hidden=p.id!==v;});
+    $$('[data-view]').forEach(function(b){
+      if(b.dataset.view===v) b.setAttribute('aria-current','page');
+      else b.removeAttribute('aria-current');
+    });
+  }
+  $$('[data-view]').forEach(function(b){b.onclick=function(){view(b.dataset.view);};});
+  $$('[data-tab]').forEach(function(b){
+    b.onclick=function(){
+      $$('[data-tab]').forEach(function(x){x.setAttribute('aria-selected',x===b);});
+      $$('.panel').forEach(function(p){p.classList.toggle('show',p.id==='p-'+b.dataset.tab);});
+    };
+  });
+
+  $('#sense').onclick=function(){
+    var b=$('#sense'),on=b.getAttribute('aria-pressed')!=='true';
+    b.setAttribute('aria-pressed',on);
+    b.textContent='🕷️ Spider-Sense: '+(on?'ON':'OFF');
+    sendToPython('toggle_spider_sense', {enabled: on});
+  };
+
+  /* Sticky Companion Note */
+  var bt;
+  function showNote(msg){
+    if(msg) $('#bmsg').textContent=msg;
+    $('#note').classList.add('show');
+    clearTimeout(bt);
+    bt=setTimeout(function(){$('#note').classList.remove('show');},9000);
+  }
+  $('#remind').onclick=function(){
+    sendToPython('trigger_reminder_now');
+  };
+  $('#bx').onclick=function(){$('#note').classList.remove('show');};
+  $('#byes').onclick=function(){add(dose);$('#note').classList.remove('show');};
+
+  /* Settings Dirty State & Apply */
+  function dirty(){$('#saved').textContent='Unsaved changes';}
+  $('#goal').oninput=function(){$('#goalOut').textContent=this.value;dirty();};
+  ['#cn','#pn','#from','#to'].forEach(function(s){$(s).oninput=dirty;});
+  $$('#set input[type=checkbox],#int').forEach(function(i){i.onchange=dirty;});
+  $$('#corners button').forEach(function(b,i){
+    b.onclick=function(){
+      $$('#corners button').forEach(function(x){x.setAttribute('aria-pressed','false');});
+      b.setAttribute('aria-pressed','true');
+      $('#cornerName').textContent=['top-left','top-right','bottom-left','bottom-right'][i];
+      dirty();
+    };
+  });
+
+  $('#save').onclick=function(){
+    var settingsData={
+      companion_name: $('#cn').value||'Spider-Man',
+      user_name: $('#pn').value||'Hero',
+      daily_goal: parseInt($('#goal').value,10)||2000,
+      launch_at_startup: $('#chk_startup').checked,
+      start_minimized: $('#chk_minimized').checked,
+      always_on_top: $('#chk_ontop').checked,
+      interval_mins: parseInt($('#int').value,10)||30,
+      quiet_hours_enabled: $('#chk_quiet').checked,
+      quiet_hours_start: $('#from').value,
+      quiet_hours_end: $('#to').value,
+      sound_effects_enabled: $('#chk_sound').checked,
+      corner_position: $('#cornerName').textContent,
+      click_through_enabled: $('#chk_clickthrough').checked,
+      animation_enabled: $('#chk_anim').checked,
+      performance_mode: $('#chk_perf').checked
+    };
+    sendToPython('save_settings', settingsData);
+    $('#saved').textContent='Settings saved at '+new Date().toLocaleTimeString([],{hour12:false});
+  };
+
+  $('#resetAll').onclick=function(){sendToPython('reset_defaults');};
+  $('#btnRestoreBackup').onclick=function(){sendToPython('restore_backup');};
+  $('#btnTestHappy').onclick=function(){sendToPython('test_animation', 'happy');};
+  $('#btnTestNo').onclick=function(){sendToPython('test_animation', 'no');};
+
+  /* External API called by Python */
+  window.updateState=function(data){
+    if(data.goal!==undefined) goal=data.goal;
+    if(data.total!==undefined) total=data.total;
+    if(data.reminders_today!==undefined) rem=data.reminders_today;
+    if(data.entries!==undefined) entries=data.entries;
+    if(data.week!==undefined) week=data.week;
+    if(data.next_time) $('#next').textContent=data.next_time;
+    if(data.status_text) $('#status').textContent=data.status_text;
+    if(data.sys_state) $('#sysState').innerHTML='<span class="led"></span>'+data.sys_state;
+    if(data.weekly_avg) $('#avgMetric').textContent=data.weekly_avg;
+    if(data.peak_intake) $('#peakMetric').textContent=data.peak_intake;
+    if(data.note_message) showNote(data.note_message);
+    if(data.cooldown_active!==undefined){
+      $('#drank').disabled=data.cooldown_active;
+      if(data.cooldown_active && data.cooldown_text){
+        $('#drank').textContent=data.cooldown_text;
+      } else {
+        $('#drank').textContent='💧 I drank '+dose+' ml';
+      }
+    }
+    if(data.spider_sense_active!==undefined){
+      var sb=$('#sense');
+      sb.setAttribute('aria-pressed', data.spider_sense_active ? 'true' : 'false');
+      sb.textContent='🕷️ Spider-Sense: '+(data.spider_sense_active?'ON':'OFF');
+    }
+    if(data.settings){
+      var s=data.settings;
+      if(s.companion_name) $('#cn').value=s.companion_name;
+      if(s.user_name) $('#pn').value=s.user_name;
+      if(s.daily_goal!==undefined){
+        $('#goal').value=s.daily_goal;
+        $('#goalOut').textContent=s.daily_goal;
+      }
+      if(s.launch_at_startup!==undefined) $('#chk_startup').checked=s.launch_at_startup;
+      if(s.start_minimized!==undefined) $('#chk_minimized').checked=s.start_minimized;
+      if(s.always_on_top!==undefined) $('#chk_ontop').checked=s.always_on_top;
+      if(s.interval_mins!==undefined) $('#int').value=s.interval_mins;
+      if(s.quiet_hours_enabled!==undefined) $('#chk_quiet').checked=s.quiet_hours_enabled;
+      if(s.quiet_hours_start) $('#from').value=s.quiet_hours_start;
+      if(s.quiet_hours_end) $('#to').value=s.quiet_hours_end;
+      if(s.sound_effects_enabled!==undefined) $('#chk_sound').checked=s.sound_effects_enabled;
+      if(s.click_through_enabled!==undefined) $('#chk_clickthrough').checked=s.click_through_enabled;
+      if(s.animation_enabled!==undefined) $('#chk_anim').checked=s.animation_enabled;
+      if(s.performance_mode!==undefined) $('#chk_perf').checked=s.performance_mode;
+      if(s.corner_position){
+        $('#cornerName').textContent=s.corner_position;
+        var cIdx=['top-left','top-right','bottom-left','bottom-right'].indexOf(s.corner_position);
+        $$('#corners button').forEach(function(b,i){
+          b.setAttribute('aria-pressed', i===cIdx?'true':'false');
+        });
+      }
+    }
+    render();
+  };
+
+  /* Connect Qt Web Channel if available */
+  function initChannel(){
+    if(typeof QWebChannel!=='undefined' && window.qt && qt.webChannelTransport){
+      new QWebChannel(qt.webChannelTransport, function(channel){
+        window.pybridge = channel.objects.pybridge;
+        sendToPython('web_ready', {});
+      });
+    }
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', initChannel);
+  } else {
+    initChannel();
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

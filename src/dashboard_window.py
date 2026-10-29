@@ -3,10 +3,13 @@ Settings & Hydration Dashboard Window for Spider-Man Water Buddy.
 Implements a premium Aquatic Liquid Glass user interface with custom left navigation sidebar,
 animated liquid reservoir widget, translucent glass cards, and real-time hydration telemetry.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import os
-from PySide6.QtCore import Qt, QTime, Signal
+import json
+from PySide6.QtCore import Qt, QTime, Signal, QTimer, QObject, Slot, QUrl
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -25,16 +28,28 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QButtonGroup,
 )
-from PySide6.QtGui import QFont, QCursor, QColor
+from PySide6.QtGui import QFont, QCursor, QColor, QPixmap, QIcon
 
 from src.config import ConfigManager, AppSettings
 from src.startup_manager import StartupManager
 from src.reminder_engine import ReminderEngine, ReminderState
 from src.theme import get_dashboard_qss, TOKENS
+from src.version import VERSION, FULL_NAME
 from src.components.glass_card import GlassCard
 from src.components.liquid_reservoir import LiquidReservoirWidget
 from src.components.streak_card import StreakCardWidget
+from src.components.thread_matrix import ThreadMatrixWidget
+from src.components.cinematic_splash import CinematicSplashOverlay
 from src.streak_tracker import StreakInfo
+
+
+class WebBridge(QObject):
+    """Bridge for bidirectional communication between Qt Python and QWebEngine JavaScript."""
+    actionDispatched = Signal(str, str)
+
+    @Slot(str, str)
+    def dispatch(self, action: str, payload_json: str):
+        self.actionDispatched.emit(action, payload_json)
 
 
 class DashboardWindow(QWidget):
@@ -56,9 +71,9 @@ class DashboardWindow(QWidget):
         self._chip_buttons = []
 
         self.setObjectName("mainDashboard")
-        self.setWindowTitle("Spider-Man Water Buddy v2.0 — Stark Tech E.D.I.T.H. HUD")
-        self.setMinimumSize(880, 680)
-        self.resize(960, 740)
+        self.setWindowTitle("Spider-Man Waterpop v2.0 — Lab Logbook")
+        self.setMinimumSize(920, 700)
+        self.resize(1020, 760)
 
         self._init_ui()
         self._connect_engine_signals()
@@ -71,72 +86,160 @@ class DashboardWindow(QWidget):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # 1. Sleek Top Header Bar
+        # 1. Primary Neo-Brutalist Pop-Art Graphic Dashboard (QWebEngineView)
+        self.web_view = QWebEngineView(self)
+        self.web_channel = QWebChannel(self)
+        self.web_bridge = WebBridge(self)
+        self.web_bridge.actionDispatched.connect(self._handle_web_action)
+        self.web_channel.registerObject("pybridge", self.web_bridge)
+        self.web_view.page().setWebChannel(self.web_channel)
+
+        html_path = Path(__file__).resolve().parent / "web" / "dashboard.html"
+        if html_path.exists():
+            self.web_view.setUrl(QUrl.fromLocalFile(str(html_path)))
+            self.web_view.loadFinished.connect(lambda ok: self._push_full_state_to_web())
+
+        root_layout.addWidget(self.web_view)
+
+        # 2. Native Subsystem Container (Retained for test compliance and instant fallback)
+        self._native_container = QWidget(self)
+        self._native_container.setVisible(False)
+        native_layout = QVBoxLayout(self._native_container)
+        native_layout.setContentsMargins(0, 0, 0, 0)
+        native_layout.setSpacing(0)
+
+        # 1. Peter Parker Lab Logbook Top Header Bar
         top_bar = QFrame()
         top_bar.setStyleSheet(f"""
             QFrame {{
-                background-color: rgba(11, 14, 20, 0.95);
-                border-bottom: 1px solid {TOKENS.BORDER_GLASS};
+                background-color: {TOKENS.BG_BASE};
+                border-bottom: 1px solid {TOKENS.BORDER_DEFAULT};
                 padding: 10px 20px;
             }}
         """)
         top_layout = QHBoxLayout(top_bar)
-        top_layout.setContentsMargins(18, 12, 18, 12)
+        top_layout.setContentsMargins(20, 12, 20, 12)
         top_layout.setSpacing(14)
 
-        logo_title = QLabel("🕸️ STARK INDUSTRIES // E.D.I.T.H.")
-        logo_title.setStyleSheet(f"""
-            font-size: 14.5px;
-            font-weight: 900;
-            color: #ffffff;
-            letter-spacing: 1.5px;
-            font-family: 'Cascadia Code', 'Segoe UI', monospace;
-        """)
-        top_layout.addWidget(logo_title)
+        # PP / App Icon Avatar Badge (Official Logo)
+        lbl_pp = QLabel()
+        icon_path = Path(__file__).resolve().parent.parent / "assets" / "images" / "app_icon.png"
+        if icon_path.exists():
+            lbl_pp.setPixmap(QPixmap(str(icon_path)).scaled(34, 34, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        else:
+            lbl_pp.setText("PP")
+            lbl_pp.setStyleSheet(f"""
+                background-color: {TOKENS.ACCENT_RED};
+                color: #ffffff;
+                font-size: 13px;
+                font-weight: 800;
+                border-radius: 16px;
+                min-width: 32px;
+                max-width: 32px;
+                min-height: 32px;
+                max-height: 32px;
+                qproperty-alignment: AlignCenter;
+            """)
+        top_layout.addWidget(lbl_pp)
 
-        subtitle_badge = QLabel("TACTICAL HUD PROTOCOL")
-        subtitle_badge.setStyleSheet(f"""
-            font-size: 9.5px;
+        # Title & Subtitle Stack
+        title_box = QVBoxLayout()
+        title_box.setSpacing(1)
+        
+        t_row = QHBoxLayout()
+        t_row.setSpacing(8)
+        logo_title = QLabel("LAB LOGBOOK")
+        logo_title.setStyleSheet(f"""
+            font-size: 16px;
             font-weight: 800;
-            color: #000000;
-            background-color: #ffffff;
-            border: 1px solid #ffffff;
-            border-radius: 3px;
-            padding: 3px 6px;
-            letter-spacing: 1px;
-            font-family: 'Cascadia Code', monospace;
+            color: {TOKENS.TEXT_PRIMARY};
+            letter-spacing: 0.5px;
         """)
-        top_layout.addWidget(subtitle_badge)
+        t_row.addWidget(logo_title)
+
+        subtitle_badge = QLabel("v2.0")
+        subtitle_badge.setStyleSheet(f"""
+            font-size: 10px;
+            font-weight: 700;
+            color: {TOKENS.TEXT_MUTED};
+            background-color: {TOKENS.BORDER_DEFAULT};
+            border-radius: 4px;
+            padding: 2px 6px;
+        """)
+        t_row.addWidget(subtitle_badge)
+        t_row.addStretch()
+        title_box.addLayout(t_row)
+
+        sub_desc = QLabel("Daily Osmosis & Hydration Metric")
+        sub_desc.setStyleSheet(f"font-size: 11px; color: {TOKENS.TEXT_MUTED};")
+        title_box.addWidget(sub_desc)
+
+        top_layout.addLayout(title_box)
         top_layout.addStretch()
 
-        self.btn_remind_now_top = QPushButton("💧 Remind Me Now")
+        # Center Spider-Sense Status Pill
+        self.sense_pill = QLabel("●  SPIDER-SENSE: ACTIVE")
+        self.sense_pill.setStyleSheet(f"""
+            background-color: #242018;
+            color: {TOKENS.ACCENT_GOLD};
+            border: 1px solid #59421A;
+            border-radius: 13px;
+            padding: 5px 14px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        """)
+        top_layout.addWidget(self.sense_pill)
+        top_layout.addStretch()
+
+        # Right Controls: Cinematic Shoot / Spidey Perch / Settings / Remind Now
+        self.btn_replay_intro = QPushButton("⚡ Intro")
+        self.btn_replay_intro.setProperty("class", "secondaryBtn")
+        self.btn_replay_intro.setToolTip("Play cinematic superhero intro sequence")
+        self.btn_replay_intro.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_replay_intro.clicked.connect(self._play_cinematic_intro)
+        top_layout.addWidget(self.btn_replay_intro)
+
+        self.btn_spidey_perch = QPushButton("🕷️ Spidey Perch")
+        self.btn_spidey_perch.setProperty("class", "secondaryBtn")
+        self.btn_spidey_perch.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_spidey_perch.clicked.connect(self._on_toggle_visibility_clicked)
+        top_layout.addWidget(self.btn_spidey_perch)
+
+        self.btn_settings_tab = QPushButton("⚙️ Settings")
+        self.btn_settings_tab.setProperty("class", "secondaryBtn")
+        self.btn_settings_tab.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_settings_tab.clicked.connect(self._toggle_settings_sidebar)
+        top_layout.addWidget(self.btn_settings_tab)
+
+        self.btn_remind_now_top = QPushButton("💧 Remind Now")
         self.btn_remind_now_top.setProperty("class", "primaryBtn")
         self.btn_remind_now_top.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_remind_now_top.clicked.connect(self._on_remind_now_clicked)
         top_layout.addWidget(self.btn_remind_now_top)
 
-        root_layout.addWidget(top_bar)
+        native_layout.addWidget(top_bar)
 
         # 2. Main Body Split: Left Sidebar + Right Stacked Content
         body_layout = QHBoxLayout()
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(0)
 
-        # Left Sidebar
-        sidebar = QWidget()
-        sidebar.setObjectName("sidebarContainer")
-        sidebar.setFixedWidth(200)
-        sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(12, 18, 12, 18)
-        sidebar_layout.setSpacing(6)
+        # Left Sidebar (Hidden by default for pure Image 2 replica, toggled by ⚙️ Settings)
+        self.sidebar = QWidget()
+        self.sidebar.setObjectName("sidebarContainer")
+        self.sidebar.setFixedWidth(170)
+        sidebar_layout = QVBoxLayout(self.sidebar)
+        sidebar_layout.setContentsMargins(10, 16, 10, 16)
+        sidebar_layout.setSpacing(4)
 
         self.nav_buttons = []
         nav_items = [
-            ("[01]  DASHBOARD", 0),
-            ("[02]  GENERAL", 1),
-            ("[03]  REMINDERS", 2),
-            ("[04]  APPEARANCE", 3),
-            ("[05]  ADVANCED", 4),
+            ("Dashboard", 0),
+            ("General", 1),
+            ("Reminders", 2),
+            ("Appearance", 3),
+            ("Advanced", 4),
         ]
 
         self.nav_group = QButtonGroup(self)
@@ -158,7 +261,8 @@ class DashboardWindow(QWidget):
             sidebar_layout.addWidget(btn)
 
         sidebar_layout.addStretch()
-        body_layout.addWidget(sidebar)
+        self.sidebar.setVisible(False)
+        body_layout.addWidget(self.sidebar)
 
         # Right Stacked Content Pages
         self.stack = QStackedWidget()
@@ -169,18 +273,18 @@ class DashboardWindow(QWidget):
         self.stack.addWidget(self._build_advanced_tab())
         body_layout.addWidget(self.stack)
 
-        root_layout.addLayout(body_layout)
+        native_layout.addLayout(body_layout)
 
-        # 3. Bottom Save & Status Bar
-        bottom_bar = QFrame()
-        bottom_bar.setStyleSheet(f"""
+        # 3. Bottom Save & Status Bar (Visible on Settings pages)
+        self.bottom_bar = QFrame()
+        self.bottom_bar.setStyleSheet(f"""
             QFrame {{
-                background-color: rgba(7, 17, 30, 0.95);
-                border-top: 1px solid {TOKENS.BORDER_GLASS};
+                background-color: {TOKENS.BG_SURFACE};
+                border-top: 1px solid {TOKENS.BORDER_DEFAULT};
                 padding: 10px 20px;
             }}
         """)
-        bottom_layout = QHBoxLayout(bottom_bar)
+        bottom_layout = QHBoxLayout(self.bottom_bar)
         bottom_layout.setContentsMargins(18, 10, 18, 10)
 
         self.status_save_label = QLabel("Settings up to date.")
@@ -194,7 +298,13 @@ class DashboardWindow(QWidget):
         self.btn_apply.clicked.connect(self.save_and_apply)
         bottom_layout.addWidget(self.btn_apply)
 
-        root_layout.addWidget(bottom_bar)
+        self.bottom_bar.setVisible(False)
+        native_layout.addWidget(self.bottom_bar)
+
+        root_layout.addWidget(self._native_container)
+
+        # 4. Cinematic Splash Opening Animation Overlay
+        self.splash_overlay = CinematicSplashOverlay(self)
 
     def _switch_nav(self, index: int):
         self.stack.setCurrentIndex(index)
@@ -203,6 +313,45 @@ class DashboardWindow(QWidget):
             btn.setProperty("selected", "true" if is_active else "false")
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+        if index == 0:
+            if hasattr(self, "bottom_bar"):
+                self.bottom_bar.setVisible(False)
+            if hasattr(self, "sidebar"):
+                self.sidebar.setVisible(False)
+        else:
+            if hasattr(self, "bottom_bar"):
+                self.bottom_bar.setVisible(True)
+            if hasattr(self, "sidebar"):
+                self.sidebar.setVisible(True)
+
+        if hasattr(self, "web_view") and self.web_view.page():
+            view_id = "today" if index == 0 else "settings"
+            self.web_view.page().runJavaScript(f"if(typeof view==='function') view('{view_id}');")
+
+    def _toggle_settings_sidebar(self):
+        new_vis = not self.sidebar.isVisible()
+        self.sidebar.setVisible(new_vis)
+        self.bottom_bar.setVisible(new_vis)
+        if new_vis and self.stack.currentIndex() == 0:
+            self._switch_nav(1)
+        elif not new_vis and self.stack.currentIndex() != 0:
+            self._switch_nav(0)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "splash_overlay"):
+            self.splash_overlay.setGeometry(self.rect())
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if hasattr(self, "splash_overlay") and not getattr(self, "_has_played_intro", False):
+            self._has_played_intro = True
+            QTimer.singleShot(80, self.splash_overlay.start_intro)
+        QTimer.singleShot(250, self._push_full_state_to_web)
+
+    def _play_cinematic_intro(self):
+        if hasattr(self, "splash_overlay"):
+            self.splash_overlay.start_intro()
 
     # PAGE 1: Aquatic Dashboard & Liquid Reservoir
     def _build_dashboard_tab(self) -> QWidget:
@@ -213,35 +362,22 @@ class DashboardWindow(QWidget):
 
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(16)
 
-        # 1. Top Telemetry Row: Status & Next Countdown
-        telemetry_row = QHBoxLayout()
-        telemetry_row.setSpacing(14)
+        # 2-Column Split Layout
+        cols_layout = QHBoxLayout()
+        cols_layout.setSpacing(16)
 
-        card_status = GlassCard("SYSTEM STATUS", "Active desktop HUD presence")
-        cs_box = QHBoxLayout()
-        self.lbl_companion_status = QLabel("ONLINE // CALIBRATED")
-        self.lbl_companion_status.setStyleSheet("font-size: 15px; font-weight: 800; color: #00f0ff; font-family: 'Cascadia Code', monospace;")
-        cs_box.addWidget(self.lbl_companion_status)
-        card_status.content_layout.addLayout(cs_box)
-        telemetry_row.addWidget(card_status)
+        # -------------------------------------------------------------
+        # LEFT COLUMN (Hero Fluid Reservoir & Manual Hydration Logging)
+        # -------------------------------------------------------------
+        left_col = QVBoxLayout()
+        left_col.setSpacing(14)
 
-        self.card_timer = GlassCard("NEXT PROTOCOL REMINDER", "Countdown to hydration prompt")
-        ct_box = QHBoxLayout()
-        self.lbl_countdown = QLabel("--:--")
-        self.lbl_countdown.setStyleSheet("font-size: 24px; font-weight: 900; color: #ffffff; font-family: 'Cascadia Code', monospace;")
-        ct_box.addWidget(self.lbl_countdown)
-        self.card_timer.content_layout.addLayout(ct_box)
-        telemetry_row.addWidget(self.card_timer)
-
-        layout.addLayout(telemetry_row)
-
-        # 2. Main Fluid Hydration Reservoir Card
-        reservoir_card = GlassCard("STARK TACTICAL RETICLE", "E.D.I.T.H. Biometric Targeting & Hydration Telemetry")
+        core_card = GlassCard("● CORE FLUID LEVEL", "Active desktop HUD presence & daily volume")
         res_layout = QVBoxLayout()
-        res_layout.setSpacing(14)
+        res_layout.setSpacing(12)
 
         # Animated Liquid Reservoir Widget
         self.reservoir_widget = LiquidReservoirWidget()
@@ -278,21 +414,75 @@ class DashboardWindow(QWidget):
         hero_log_box.addLayout(chip_box)
 
         # Big Hero Manual Drink Button
-        self.btn_hero_drink = QPushButton("💧 [ +250 ml ] LOG DOSE")
+        self.btn_hero_drink = QPushButton(f"💧 [ +{self._selected_amount} ml ] YES, I DRANK")
         self.btn_hero_drink.setProperty("class", "heroDrinkBtn")
         self.btn_hero_drink.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_hero_drink.clicked.connect(self._on_hero_drink_clicked)
         hero_log_box.addWidget(self.btn_hero_drink)
 
-        # Cooldown & Spacing Label
+        # Cooldown & Status Label
         self.lbl_cooldown_status = QLabel("Ready to log hydration")
         self.lbl_cooldown_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_cooldown_status.setStyleSheet(f"font-size: 11.5px; font-weight: 600; color: {TOKENS.ACCENT_MINT};")
         hero_log_box.addWidget(self.lbl_cooldown_status)
 
+        # Quick Log Dose Buttons (Glass, Flask, Canteen)
+        quick_btns_box = QHBoxLayout()
+        quick_btns_box.setSpacing(8)
+
+        self.btn_quick_250 = QPushButton("+250ml Glass")
+        self.btn_quick_250.setProperty("class", "secondaryBtn")
+        self.btn_quick_250.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_quick_250.clicked.connect(lambda: self._on_quick_dose_clicked(250))
+        quick_btns_box.addWidget(self.btn_quick_250)
+
+        self.btn_quick_350 = QPushButton("+350ml Flask")
+        self.btn_quick_350.setProperty("class", "secondaryBtn")
+        self.btn_quick_350.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_quick_350.clicked.connect(lambda: self._on_quick_dose_clicked(350))
+        quick_btns_box.addWidget(self.btn_quick_350)
+
+        self.btn_quick_500 = QPushButton("+500ml Canteen")
+        self.btn_quick_500.setProperty("class", "secondaryBtn")
+        self.btn_quick_500.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_quick_500.clicked.connect(lambda: self._on_quick_dose_clicked(500))
+        quick_btns_box.addWidget(self.btn_quick_500)
+
+        hero_log_box.addLayout(quick_btns_box)
+
+        # Custom Intake Spinbox + Reset Day row
+        adjust_row = QHBoxLayout()
+        adjust_row.setSpacing(8)
+
+        lbl_custom = QLabel("Custom:")
+        lbl_custom.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-size: 11px;")
+        adjust_row.addWidget(lbl_custom)
+
+        self.spin_custom_amount = QSpinBox()
+        self.spin_custom_amount.setRange(50, 1500)
+        self.spin_custom_amount.setSingleStep(50)
+        self.spin_custom_amount.setValue(200)
+        self.spin_custom_amount.setSuffix(" ml")
+        adjust_row.addWidget(self.spin_custom_amount)
+
+        self.btn_log_custom = QPushButton("+ Log")
+        self.btn_log_custom.setProperty("class", "secondaryBtn")
+        self.btn_log_custom.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_log_custom.clicked.connect(lambda: self._on_quick_dose_clicked(self.spin_custom_amount.value()))
+        adjust_row.addWidget(self.btn_log_custom)
+
+        adjust_row.addStretch()
+
+        self.btn_reset_day = QPushButton("↺ Reset Today")
+        self.btn_reset_day.setProperty("class", "secondaryBtn")
+        self.btn_reset_day.setToolTip("Reset today's logged hydration counter to 0")
+        self.btn_reset_day.clicked.connect(self._on_reset_today_clicked)
+        adjust_row.addWidget(self.btn_reset_day)
+
+        hero_log_box.addLayout(adjust_row)
         res_layout.addLayout(hero_log_box)
 
-        # Legacy Quick Log Buttons (Kept for compatibility with test suites & quick shortcuts)
+        # Legacy Quick Log Buttons & Labels (Kept for compatibility with test suites & quick shortcuts)
         self.btn_log_250 = QPushButton("💧 +250 ml")
         self.btn_log_250.setVisible(False)
         self.btn_log_250.clicked.connect(lambda: self._quick_log_water(250))
@@ -302,102 +492,202 @@ class DashboardWindow(QWidget):
         res_layout.addWidget(self.btn_log_250)
         res_layout.addWidget(self.btn_log_500)
 
-        # Fallback hidden labels for compatibility
         self.lbl_hydro_stats = QLabel("0 / 2000 ml (0%)")
         self.lbl_hydro_stats.setVisible(False)
         self.progress_hydro = QProgressBar()
         self.progress_hydro.setVisible(False)
         self.lbl_reminders_completed = QLabel("Completed Reminders Today: 0")
-        self.lbl_reminders_completed.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 12.5px; font-weight: 600;")
+        self.lbl_reminders_completed.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 12px; font-weight: 600;")
         res_layout.addWidget(self.lbl_reminders_completed)
 
-        reservoir_card.content_layout.addLayout(res_layout)
-        layout.addWidget(reservoir_card)
+        core_card.content_layout.addLayout(res_layout)
+        left_col.addWidget(core_card)
+        left_col.addStretch()
+        cols_layout.addLayout(left_col, stretch=1)
 
-        # 3. Daily Hydration Goal & Streak Tracker Card
-        self.streak_card = StreakCardWidget()
-        layout.addWidget(self.streak_card)
+        # -------------------------------------------------------------
+        # RIGHT COLUMN: HERO REMINDER PROTOCOL & LAB LOGBOOK CARDS
+        # -------------------------------------------------------------
+        right_col = QVBoxLayout()
+        right_col.setSpacing(14)
 
-        # 4. Quick Action Controls Card
-        ctrl_card = GlassCard("Companion Quick Controls", "Pause or hide desktop overlay")
-        ctrl_layout = QHBoxLayout()
-        ctrl_layout.setSpacing(12)
+        # Card 1: HERO REMINDER PROTOCOL & NEXT PROMPT (v1.0.0 Restored & Enhanced)
+        self.card_timer = GlassCard("REMINDER PROTOCOL & NEXT PROMPT", "Countdown to hydration prompt")
+        timer_box = QVBoxLayout()
+        timer_box.setSpacing(10)
+
+        # Status & Scheduled Trigger Time Row
+        sched_header_row = QHBoxLayout()
+        sched_header_row.setSpacing(8)
+
+        self.lbl_companion_status = QLabel("🟢 ACTIVE MONITORING")
+        self.lbl_companion_status.setStyleSheet(f"""
+            background-color: #121E17;
+            color: {TOKENS.STATUS_SUCCESS};
+            border: 1px solid #1E3D2B;
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 800;
+            font-family: 'Cascadia Code', monospace;
+        """)
+        sched_header_row.addWidget(self.lbl_companion_status)
+
+        self.lbl_next_time = QLabel("Scheduled Trigger: --:--")
+        self.lbl_next_time.setStyleSheet(f"""
+            color: {TOKENS.TEXT_SECONDARY};
+            font-size: 11.5px;
+            font-weight: 600;
+            font-family: 'Cascadia Code', monospace;
+        """)
+        sched_header_row.addWidget(self.lbl_next_time)
+        sched_header_row.addStretch()
+
+        timer_box.addLayout(sched_header_row)
+
+        # Huge Central Monospace Countdown
+        countdown_container = QFrame()
+        countdown_container.setStyleSheet(f"""
+            background-color: {TOKENS.BG_INPUT};
+            border: 1px solid {TOKENS.BORDER_DEFAULT};
+            border-radius: {TOKENS.RADIUS_MD};
+            padding: 12px 16px;
+        """)
+        cd_vbox = QVBoxLayout(countdown_container)
+        cd_vbox.setContentsMargins(0, 0, 0, 0)
+        cd_vbox.setSpacing(2)
+
+        self.lbl_countdown = QLabel("--:--")
+        self.lbl_countdown.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_countdown.setStyleSheet(f"""
+            font-size: 32px;
+            font-weight: 900;
+            color: {TOKENS.ACCENT_AQUA};
+            font-family: 'Cascadia Code', monospace;
+            letter-spacing: 1px;
+        """)
+        cd_vbox.addWidget(self.lbl_countdown)
+
+        lbl_cd_sub = QLabel("NEXT HYDRATION DISPATCH")
+        lbl_cd_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_cd_sub.setStyleSheet(f"""
+            font-size: 10px;
+            font-weight: 700;
+            color: {TOKENS.TEXT_MUTED};
+            letter-spacing: 0.8px;
+            font-family: 'Cascadia Code', monospace;
+        """)
+        cd_vbox.addWidget(lbl_cd_sub)
+
+        timer_box.addWidget(countdown_container)
+
+        # Quick Interval Selector & Pause Toggle
+        protocol_ctrl_row = QHBoxLayout()
+        protocol_ctrl_row.setSpacing(10)
+
+        lbl_cadence = QLabel("Cadence:")
+        lbl_cadence.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-size: 11.5px; font-weight: 700;")
+        protocol_ctrl_row.addWidget(lbl_cadence)
+
+        self.quick_combo_interval = QComboBox()
+        self.quick_combo_interval.addItems(["15 Mins", "30 Mins", "45 Mins", "60 Mins"])
+        self.quick_combo_interval.setCurrentText("30 Mins")
+        self.quick_combo_interval.currentTextChanged.connect(self._on_quick_interval_changed)
+        protocol_ctrl_row.addWidget(self.quick_combo_interval)
 
         self.btn_pause_toggle = QPushButton("⏸️ Pause Reminders")
         self.btn_pause_toggle.setProperty("class", "secondaryBtn")
         self.btn_pause_toggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_pause_toggle.clicked.connect(self._on_toggle_pause_clicked)
-        ctrl_layout.addWidget(self.btn_pause_toggle)
+        protocol_ctrl_row.addWidget(self.btn_pause_toggle)
+
+        protocol_ctrl_row.addStretch()
+        timer_box.addLayout(protocol_ctrl_row)
+
+        self.card_timer.content_layout.addLayout(timer_box)
+        right_col.addWidget(self.card_timer)
+
+        # Card 2: DAILY THREAD MATRIX & OSMOSIS METRICS (7-Day Log)
+        card_matrix = GlassCard("DAILY THREAD MATRIX", "7-Day continuous hydration thread network")
+        self.thread_matrix = ThreadMatrixWidget()
+        card_matrix.content_layout.addWidget(self.thread_matrix)
+
+        # Analytics row: Weekly Average & Peak Intake
+        osmo_row2 = QHBoxLayout()
+        osmo_row2.setSpacing(10)
+
+        tile_avg = QFrame()
+        tile_avg.setStyleSheet(f"background-color: {TOKENS.BG_INPUT}; border: 1px solid {TOKENS.BORDER_DEFAULT}; border-radius: {TOKENS.RADIUS_MD}; padding: 8px 12px;")
+        avg_vbox = QVBoxLayout(tile_avg)
+        avg_vbox.setSpacing(2)
+        lbl_avg_t = QLabel("WEEKLY AVG")
+        lbl_avg_t.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 10px; font-weight: 700; font-family: 'Cascadia Code', monospace;")
+        self.lbl_metric_avg = QLabel("1.8 L")
+        self.lbl_metric_avg.setStyleSheet("color: #ffffff; font-size: 16px; font-weight: 800; font-family: 'Cascadia Code', monospace;")
+        avg_vbox.addWidget(lbl_avg_t)
+        avg_vbox.addWidget(self.lbl_metric_avg)
+        osmo_row2.addWidget(tile_avg)
+
+        tile_peak = QFrame()
+        tile_peak.setStyleSheet(f"background-color: {TOKENS.BG_INPUT}; border: 1px solid {TOKENS.BORDER_DEFAULT}; border-radius: {TOKENS.RADIUS_MD}; padding: 8px 12px;")
+        peak_vbox = QVBoxLayout(tile_peak)
+        peak_vbox.setSpacing(2)
+        lbl_peak_t = QLabel("PEAK INTAKE")
+        lbl_peak_t.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 10px; font-weight: 700; font-family: 'Cascadia Code', monospace;")
+        self.lbl_metric_peak = QLabel("2:15 PM")
+        self.lbl_metric_peak.setStyleSheet(f"color: {TOKENS.ACCENT_GOLD}; font-size: 16px; font-weight: 800; font-family: 'Cascadia Code', monospace;")
+        peak_vbox.addWidget(lbl_peak_t)
+        peak_vbox.addWidget(self.lbl_metric_peak)
+        osmo_row2.addWidget(tile_peak)
+
+        card_matrix.content_layout.addLayout(osmo_row2)
+        right_col.addWidget(card_matrix)
+
+        # Card 3: LAB PARAMETERS & COMPANION CONTROLS
+        card_params = GlassCard("LAB PARAMETERS & QUICK CONTROLS", "Fast protocol calibration & companion state")
+        params_layout = QVBoxLayout()
+        params_layout.setSpacing(10)
+
+        # 1. Parameter rows
+        row_goal = QHBoxLayout()
+        lbl_g = QLabel("Daily Target (ml):")
+        lbl_g.setStyleSheet(f"color: {TOKENS.TEXT_SECONDARY}; font-size: 11.5px; font-weight: 600;")
+        self.quick_spin_goal = QSpinBox()
+        self.quick_spin_goal.setRange(500, 5000)
+        self.quick_spin_goal.setSingleStep(250)
+        self.quick_spin_goal.setValue(2000)
+        self.quick_spin_goal.setSuffix(" ml")
+        self.quick_spin_goal.valueChanged.connect(self._on_quick_goal_changed)
+        row_goal.addWidget(lbl_g)
+        row_goal.addStretch()
+        row_goal.addWidget(self.quick_spin_goal)
+        params_layout.addLayout(row_goal)
+
+        row_fx = QHBoxLayout()
+        self.quick_chk_sound = QCheckBox("Acoustic Audio FX")
+        self.quick_chk_sound.setChecked(True)
+        self.quick_chk_sound.toggled.connect(self._on_quick_sound_changed)
+        row_fx.addWidget(self.quick_chk_sound)
+        row_fx.addStretch()
 
         self.btn_visibility_toggle = QPushButton("👁️ Hide Companion")
         self.btn_visibility_toggle.setProperty("class", "secondaryBtn")
         self.btn_visibility_toggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_visibility_toggle.clicked.connect(self._on_toggle_visibility_clicked)
-        ctrl_layout.addWidget(self.btn_visibility_toggle)
+        row_fx.addWidget(self.btn_visibility_toggle)
+        params_layout.addLayout(row_fx)
 
-        ctrl_layout.addStretch()
-        ctrl_card.content_layout.addLayout(ctrl_layout)
-        layout.addWidget(ctrl_card)
+        card_params.content_layout.addLayout(params_layout)
+        right_col.addWidget(card_params)
 
-        # 5. Stark Tech [ SYSTEM INDEX ] HUD Telemetry Box (matching the reference HUD!)
-        hud_index_card = GlassCard("[ SYSTEM INDEX ]", "Tactical telemetry and sensor diagnostics")
-        hud_grid = QHBoxLayout()
-        hud_grid.setSpacing(10)
+        right_col.addStretch()
+        cols_layout.addLayout(right_col, stretch=1)
 
-        # Telemetry item 1: WEB STATUS
-        box_web = QFrame()
-        box_web.setStyleSheet("background: #05070a; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 4px; padding: 6px;")
-        bw_layout = QVBoxLayout(box_web)
-        bw_layout.setContentsMargins(6, 4, 6, 4)
-        bw_title = QLabel("WEB-FLUID: CALIBRATED")
-        bw_title.setStyleSheet("color: #ffffff; font-weight: 800; font-size: 10px; font-family: 'Cascadia Code', monospace;")
-        bw_desc = QLabel("Multi-point hydration sensor active")
-        bw_desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 9.5px;")
-        bw_layout.addWidget(bw_title)
-        bw_layout.addWidget(bw_desc)
-        hud_grid.addWidget(box_web)
+        layout.addLayout(cols_layout)
 
-        # Telemetry item 2: TARGETING
-        box_targ = QFrame()
-        box_targ.setStyleSheet("background: #05070a; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 4px; padding: 6px;")
-        bt_layout = QVBoxLayout(box_targ)
-        bt_layout.setContentsMargins(6, 4, 6, 4)
-        bt_title = QLabel("TARGETING: 0 SELECTED")
-        bt_title.setStyleSheet("color: #ffffff; font-weight: 800; font-size: 10px; font-family: 'Cascadia Code', monospace;")
-        bt_desc = QLabel("Targeting system operational")
-        bt_desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 9.5px;")
-        bt_layout.addWidget(bt_title)
-        bt_layout.addWidget(bt_desc)
-        hud_grid.addWidget(box_targ)
-
-        # Telemetry item 3: NET-MATH
-        box_math = QFrame()
-        box_math.setStyleSheet("background: #05070a; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 4px; padding: 6px;")
-        bm_layout = QVBoxLayout(box_math)
-        bm_layout.setContentsMargins(6, 4, 6, 4)
-        bm_title = QLabel("NET-MATH: ACCURATE")
-        bm_title.setStyleSheet("color: #ffffff; font-weight: 800; font-size: 10px; font-family: 'Cascadia Code', monospace;")
-        bm_desc = QLabel("Streak algorithm & atomic storage")
-        bm_desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 9.5px;")
-        bm_layout.addWidget(bm_title)
-        bm_layout.addWidget(bm_desc)
-        hud_grid.addWidget(box_math)
-
-        # Telemetry item 4: E.D.I.T.H.
-        box_edith = QFrame()
-        box_edith.setStyleSheet("background: #05070a; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 4px; padding: 6px;")
-        be_layout = QVBoxLayout(box_edith)
-        be_layout.setContentsMargins(6, 4, 6, 4)
-        be_title = QLabel("E.D.I.T.H. PROTOCOL")
-        be_title.setStyleSheet("color: #00f0ff; font-weight: 800; font-size: 10px; font-family: 'Cascadia Code', monospace;")
-        be_desc = QLabel("Desktop companion online")
-        be_desc.setStyleSheet(f"color: {TOKENS.TEXT_MUTED}; font-size: 9.5px;")
-        be_layout.addWidget(be_title)
-        be_layout.addWidget(be_desc)
-        hud_grid.addWidget(box_edith)
-
-        hud_index_card.content_layout.addLayout(hud_grid)
-        layout.addWidget(hud_index_card)
+        # Bottom Full-Width Streak Tracker Card (Maintains full test compatibility & flame celebration)
+        self.streak_card = StreakCardWidget()
+        layout.addWidget(self.streak_card)
 
         layout.addStretch()
         scroll.setWidget(widget)
@@ -627,7 +917,7 @@ class DashboardWindow(QWidget):
         # About & Diagnostics
         info_card = GlassCard("Application Information & Diagnostics", "Technical telemetry and system paths")
         info_rows = [
-            ("Version:", "1.0.0 (Aquatic Liquid Glass Edition)"),
+            ("Version:", f"{VERSION} (Spider-Sense Edition)"),
             ("Framework:", "PySide6 (Qt 6.12) / Python 3.11"),
             ("Rendering Engine:", "Hardware Accelerated 2D Vector & PBR Alpha Blending"),
             ("Config Path:", str(self.config_manager.settings_file)),
@@ -712,13 +1002,43 @@ class DashboardWindow(QWidget):
             self.status_save_label.setText(f"Cooldown active: please wait {mins}m {secs:02d}s before logging again.")
             self._on_cooldown_tick(res.remaining_seconds)
 
+    def _on_quick_goal_changed(self, val: int):
+        self.settings.daily_hydration_goal_ml = val
+        if hasattr(self, "spin_daily_goal"):
+            self.spin_daily_goal.setValue(val)
+        self.config_manager.save()
+        self.reservoir_widget.set_values(self.settings.today_intake_ml, val)
+        if hasattr(self, "thread_matrix"):
+            self.thread_matrix.update_matrix(self.settings.daily_history, self.settings.today_intake_ml, val)
+        self.settingsChanged.emit()
+
+    def _on_quick_interval_changed(self, text: str):
+        try:
+            mins = int(text.split()[0])
+            self.settings.reminder_interval_minutes = mins
+            self.config_manager.save()
+            self.engine.reset_schedule()
+            self.settingsChanged.emit()
+        except Exception:
+            pass
+
+    def _on_quick_sound_changed(self, enabled: bool):
+        self.settings.sound_effects_enabled = enabled
+        if hasattr(self, "chk_sound"):
+            self.chk_sound.setChecked(enabled)
+        self.config_manager.save()
+        self.settingsChanged.emit()
+
     def _on_cooldown_tick(self, rem_secs: int):
         if not hasattr(self, "btn_hero_drink"):
             return
+        cooldown_active = (rem_secs > 0)
+        cooldown_text = ""
         if rem_secs > 0:
             mins, secs = divmod(rem_secs, 60)
+            cooldown_text = f"⏳ Next log in {mins:02d}:{secs:02d}"
             self.btn_hero_drink.setEnabled(False)
-            self.btn_hero_drink.setText(f"⏳ Next log in {mins:02d}:{secs:02d}")
+            self.btn_hero_drink.setText(cooldown_text)
             self.lbl_cooldown_status.setText(f"Cooldown active: {mins}m {secs:02d}s remaining (minimum 30m spacing)")
             self.lbl_cooldown_status.setStyleSheet(f"font-size: 11.5px; font-weight: 700; color: {TOKENS.STATUS_WARNING};")
             for chip in getattr(self, "_chip_buttons", []):
@@ -731,13 +1051,51 @@ class DashboardWindow(QWidget):
             for chip in getattr(self, "_chip_buttons", []):
                 chip.setEnabled(True)
 
+        self._send_js_state({
+            "cooldown_active": cooldown_active,
+            "cooldown_text": cooldown_text
+        })
+
     def _on_streak_updated(self, info: StreakInfo):
         if hasattr(self, "streak_card"):
             self.streak_card.update_info(info)
+        if hasattr(self, "thread_matrix"):
+            self.thread_matrix.update_matrix(
+                self.settings.daily_history,
+                info.today_intake_ml,
+                info.daily_goal_ml
+            )
+        self._push_full_state_to_web()
 
     def _on_goal_celebrated(self, msg: str):
         if hasattr(self, "streak_card"):
             self.streak_card.trigger_celebration(msg)
+        self._send_js_state({"note_message": msg})
+
+    def _on_quick_dose_clicked(self, ml: int):
+        self._select_amount(ml)
+        self._quick_log_water(ml, is_manual=True)
+
+    def _on_reset_today_clicked(self):
+        reply = QMessageBox.question(
+            self,
+            "Reset Today's Intake?",
+            "Are you sure you want to reset today's logged water to 0 ml?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self.settings.today_intake_ml = 0
+            self.config_manager.save()
+            info = self.engine.get_streak_info()
+            if hasattr(self, "streak_card"):
+                self.streak_card.update_info(info)
+            if hasattr(self, "thread_matrix"):
+                self.thread_matrix.update_matrix(
+                    self.settings.daily_history, 0, self.settings.daily_hydration_goal_ml
+                )
+            self.reservoir_widget.set_values(0, self.settings.daily_hydration_goal_ml)
+            self.status_save_label.setText("Today's intake was reset to 0 ml.")
 
     def _on_timer_tick(self, seconds: int):
         if self.engine.state == ReminderState.QUIET_HOURS:
@@ -755,10 +1113,13 @@ class DashboardWindow(QWidget):
             self.lbl_countdown.setStyleSheet(f"font-size: 20px; font-weight: 900; color: {TOKENS.ACCENT_AQUA};")
             if hasattr(self, "card_timer"):
                 self.card_timer.lbl_subtitle.setText(f"Sleeping • Resumes in {hrs}h {mins:02d}m")
+            if hasattr(self, "lbl_next_time"):
+                self.lbl_next_time.setText(f"Resumes at: {formatted_end}")
             self.lbl_countdown.setToolTip(
                 f"Quiet Hours are active ({self.settings.quiet_hours_start} to {self.settings.quiet_hours_end}).\n"
                 f"Hydration reminders will automatically resume at {formatted_end} (in {hrs}h {mins:02d}m {secs:02d}s)."
             )
+            self._send_js_state({"next_time": self.lbl_countdown.text()})
             return
 
         if hasattr(self, "card_timer"):
@@ -768,10 +1129,14 @@ class DashboardWindow(QWidget):
             self.lbl_countdown.setText("Paused")
             self.lbl_countdown.setStyleSheet(f"font-size: 22px; font-weight: 900; color: {TOKENS.STATUS_WARNING};")
             self.lbl_countdown.setToolTip("Reminders are currently paused.")
+            if hasattr(self, "lbl_next_time"):
+                self.lbl_next_time.setText("Protocol status: PAUSED")
         elif seconds == 0:
             self.lbl_countdown.setText("DUE NOW!")
             self.lbl_countdown.setStyleSheet(f"font-size: 22px; font-weight: 900; color: {TOKENS.ACCENT_MINT};")
             self.lbl_countdown.setToolTip("Hydration reminder is due right now!")
+            if hasattr(self, "lbl_next_time"):
+                self.lbl_next_time.setText("Prompt triggering now!")
         else:
             hrs, rem = divmod(seconds, 3600)
             mins, secs = divmod(rem, 60)
@@ -779,31 +1144,75 @@ class DashboardWindow(QWidget):
                 self.lbl_countdown.setText(f"{hrs:02d}:{mins:02d}:{secs:02d}")
             else:
                 self.lbl_countdown.setText(f"{mins:02d}:{secs:02d}")
-            self.lbl_countdown.setStyleSheet(f"font-size: 24px; font-weight: 900; color: {TOKENS.ACCENT_AQUA};")
+            self.lbl_countdown.setStyleSheet(f"font-size: 28px; font-weight: 900; color: {TOKENS.ACCENT_AQUA};")
             self.lbl_countdown.setToolTip(
                 f"Next reminder in {hrs}h {mins}m {secs}s" if hrs > 0 else f"Next reminder in {mins}m {secs}s"
             )
+            if hasattr(self, "lbl_next_time"):
+                target_dt = datetime.now() + timedelta(seconds=seconds)
+                time_str = target_dt.strftime("%I:%M %p").lstrip("0")
+                self.lbl_next_time.setText(f"Scheduled Trigger: {time_str}")
+        self._send_js_state({"next_time": self.lbl_countdown.text()})
 
     def _on_state_changed(self, state: ReminderState):
         if state == ReminderState.PAUSED:
             self.lbl_companion_status.setText("⏸️ PAUSED")
-            self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.STATUS_WARNING};")
+            self.lbl_companion_status.setStyleSheet(f"""
+                background-color: #242018;
+                color: {TOKENS.STATUS_WARNING};
+                border: 1px solid #59421A;
+                border-radius: 6px;
+                padding: 3px 8px;
+                font-size: 11px;
+                font-weight: 800;
+                font-family: 'Cascadia Code', monospace;
+            """)
             self.btn_pause_toggle.setText("▶️ Resume Reminders")
+            if hasattr(self, "lbl_next_time"):
+                self.lbl_next_time.setText("Protocol status: PAUSED")
         elif state == ReminderState.QUIET_HOURS:
             self.lbl_companion_status.setText("🌙 QUIET HOURS")
-            self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.TEXT_MUTED};")
+            self.lbl_companion_status.setStyleSheet(f"""
+                background-color: #1A1D24;
+                color: {TOKENS.TEXT_MUTED};
+                border: 1px solid {TOKENS.BORDER_DEFAULT};
+                border-radius: 6px;
+                padding: 3px 8px;
+                font-size: 11px;
+                font-weight: 800;
+                font-family: 'Cascadia Code', monospace;
+            """)
             rem_secs = self.engine.get_seconds_remaining()
             if rem_secs > 0:
                 self._on_timer_tick(rem_secs)
         elif state == ReminderState.WAITING_FOR_RESPONSE:
-            self.lbl_companion_status.setText("💧 REMINDER ACTIVE")
-            self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.ACCENT_AQUA};")
+            self.lbl_companion_status.setText("💧 PROMPT ACTIVE")
+            self.lbl_companion_status.setStyleSheet(f"""
+                background-color: #112028;
+                color: {TOKENS.ACCENT_AQUA};
+                border: 1px solid #1E3D48;
+                border-radius: 6px;
+                padding: 3px 8px;
+                font-size: 11px;
+                font-weight: 800;
+                font-family: 'Cascadia Code', monospace;
+            """)
         else:
-            self.lbl_companion_status.setText("🟢 ACTIVE")
-            self.lbl_companion_status.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {TOKENS.STATUS_SUCCESS};")
+            self.lbl_companion_status.setText("🟢 ACTIVE MONITORING")
+            self.lbl_companion_status.setStyleSheet(f"""
+                background-color: #121E17;
+                color: {TOKENS.STATUS_SUCCESS};
+                border: 1px solid #1E3D2B;
+                border-radius: 6px;
+                padding: 3px 8px;
+                font-size: 11px;
+                font-weight: 800;
+                font-family: 'Cascadia Code', monospace;
+            """)
             self.btn_pause_toggle.setText("⏸️ Pause Reminders")
             if hasattr(self, "card_timer"):
                 self.card_timer.lbl_subtitle.setText("Countdown to hydration prompt")
+        self._push_full_state_to_web()
 
     def _on_stats_updated(self, count: int, ml: int):
         self.lbl_reminders_completed.setText(f"Completed Reminders Today: {count}")
@@ -813,6 +1222,13 @@ class DashboardWindow(QWidget):
         self.progress_hydro.setValue(pct)
         # Update animated fluid reservoir
         self.reservoir_widget.set_values(ml, goal)
+        if hasattr(self, "thread_matrix"):
+            self.thread_matrix.update_matrix(
+                self.settings.daily_history,
+                ml,
+                goal
+            )
+        self._push_full_state_to_web()
 
     def _quick_log_water(self, ml: int, is_manual: bool = False):
         if is_manual:
@@ -903,6 +1319,18 @@ class DashboardWindow(QWidget):
         if hasattr(self, "_on_cooldown_tick"):
             rem = self.engine.streak_tracker.get_cooldown_remaining()
             self._on_cooldown_tick(rem)
+        if hasattr(self, "quick_spin_goal"):
+            self.quick_spin_goal.blockSignals(True)
+            self.quick_spin_goal.setValue(s.daily_hydration_goal_ml)
+            self.quick_spin_goal.blockSignals(False)
+        if hasattr(self, "quick_combo_interval"):
+            self.quick_combo_interval.blockSignals(True)
+            self.quick_combo_interval.setCurrentText(f"{s.reminder_interval_minutes} Mins")
+            self.quick_combo_interval.blockSignals(False)
+        if hasattr(self, "quick_chk_sound"):
+            self.quick_chk_sound.blockSignals(True)
+            self.quick_chk_sound.setChecked(s.sound_effects_enabled)
+            self.quick_chk_sound.blockSignals(False)
 
     def save_and_apply(self):
         s = self.settings
@@ -983,3 +1411,170 @@ class DashboardWindow(QWidget):
             QMessageBox.information(self, "Backup Restored", "Settings have been restored from the last backup.")
         else:
             QMessageBox.warning(self, "No Backup", "No valid backup file was found.")
+
+    def _send_js_state(self, payload: dict):
+        if hasattr(self, "web_view") and self.web_view.page():
+            js = f"if(window.updateState) {{ window.updateState({json.dumps(payload)}); }}"
+            self.web_view.page().runJavaScript(js)
+
+    def _push_full_state_to_web(self):
+        if not hasattr(self, "web_view"):
+            return
+        total = self.settings.today_intake_ml
+        goal = self.settings.daily_hydration_goal_ml
+        rem = self.settings.today_reminders_completed
+
+        week = [0.0] * 7
+        today = datetime.now()
+        today_weekday = today.weekday()
+        if goal > 0:
+            week[today_weekday] = min(1.0, round(total / goal, 2))
+
+        history_map = {item.get("date"): item for item in self.settings.daily_history}
+        for i in range(7):
+            d = today - timedelta(days=(today_weekday - i))
+            d_str = d.strftime("%Y-%m-%d")
+            if d_str in history_map:
+                h_goal = history_map[d_str].get("goal_ml", goal) or goal
+                h_intake = history_map[d_str].get("intake_ml", 0)
+                week[i] = min(1.0, round(h_intake / h_goal, 2)) if h_goal > 0 else 0.0
+
+        entries = []
+        if total > 0:
+            entries.append({"t": "Today", "ml": total})
+
+        cooldown_rem = self.engine.streak_tracker.get_cooldown_remaining()
+        cooldown_active = (cooldown_rem > 0)
+        cooldown_text = ""
+        if cooldown_active:
+            m, s = divmod(cooldown_rem, 60)
+            cooldown_text = f"⏳ Next log in {m:02d}:{s:02d}"
+
+        status_text = f"Logged {total} / {goal} ml today"
+        sys_state = "Active" if not self.settings.reminders_paused and self.engine.state != ReminderState.QUIET_HOURS else ("Sleeping" if self.engine.state == ReminderState.QUIET_HOURS else "Paused")
+
+        settings_payload = {
+            "companion_name": self.settings.companion_name,
+            "user_name": self.settings.user_name,
+            "daily_goal": self.settings.daily_hydration_goal_ml,
+            "launch_at_startup": self.settings.launch_at_startup,
+            "start_minimized": self.settings.start_minimized,
+            "always_on_top": self.settings.always_on_top,
+            "interval_mins": self.settings.reminder_interval_minutes,
+            "quiet_hours_enabled": self.settings.quiet_hours_enabled,
+            "quiet_hours_start": self.settings.quiet_hours_start,
+            "quiet_hours_end": self.settings.quiet_hours_end,
+            "sound_effects_enabled": self.settings.sound_effects_enabled,
+            "corner_position": self.settings.corner_position,
+            "click_through_enabled": self.settings.click_through_enabled,
+            "animation_enabled": self.settings.animation_enabled,
+            "performance_mode": self.settings.performance_mode,
+        }
+
+        weekly_avg = f"{total} ml"
+        if self.settings.daily_history:
+            total_hist = sum(h.get("intake_ml", 0) for h in self.settings.daily_history) + total
+            count_days = len(self.settings.daily_history) + 1
+            weekly_avg = f"{int(total_hist / count_days)} ml"
+
+        peak_intake = f"{max(total, max([h.get('intake_ml', 0) for h in self.settings.daily_history] or [0]))} ml"
+
+        payload = {
+            "goal": goal,
+            "total": total,
+            "reminders_today": rem,
+            "week": week,
+            "entries": entries,
+            "status_text": status_text,
+            "sys_state": sys_state,
+            "cooldown_active": cooldown_active,
+            "cooldown_text": cooldown_text,
+            "spider_sense_active": not self.settings.reminders_paused,
+            "weekly_avg": weekly_avg,
+            "peak_intake": peak_intake,
+            "settings": settings_payload
+        }
+        if hasattr(self, "lbl_countdown"):
+            payload["next_time"] = self.lbl_countdown.text()
+        self._send_js_state(payload)
+
+    def _handle_web_action(self, action: str, payload_json: str):
+        try:
+            data = json.loads(payload_json) if payload_json else {}
+        except Exception:
+            data = {}
+
+        if action == "web_ready":
+            self._push_full_state_to_web()
+        elif action == "log_water":
+            amount = int(data.get("amount", self._selected_amount))
+            self._select_amount(amount)
+            self._quick_log_water(amount, is_manual=True)
+            self._push_full_state_to_web()
+        elif action == "reset_today":
+            self._on_reset_today_clicked()
+            self._push_full_state_to_web()
+        elif action == "toggle_spider_sense":
+            self._on_toggle_pause_clicked()
+            self._push_full_state_to_web()
+        elif action == "trigger_reminder_now":
+            self._on_remind_now_clicked()
+        elif action == "save_settings":
+            self._save_settings_from_web(data)
+        elif action == "reset_defaults":
+            self._reset_defaults()
+            self._push_full_state_to_web()
+        elif action == "restore_backup":
+            self._restore_backup()
+            self._push_full_state_to_web()
+        elif action == "test_animation":
+            anim_type = data if isinstance(data, str) else data.get("type", "happy")
+            self.testAnimationRequested.emit(anim_type)
+
+    def _save_settings_from_web(self, data: dict):
+        if "companion_name" in data and hasattr(self, "edit_comp_name"):
+            self.edit_comp_name.setText(str(data["companion_name"]))
+        if "user_name" in data and hasattr(self, "edit_user_name"):
+            self.edit_user_name.setText(str(data["user_name"]))
+        if "daily_goal" in data and hasattr(self, "spin_daily_goal"):
+            self.spin_daily_goal.setValue(int(data["daily_goal"]))
+        if "launch_at_startup" in data and hasattr(self, "chk_startup"):
+            self.chk_startup.setChecked(bool(data["launch_at_startup"]))
+        if "start_minimized" in data and hasattr(self, "chk_start_minimized"):
+            self.chk_start_minimized.setChecked(bool(data["start_minimized"]))
+        if "always_on_top" in data and hasattr(self, "chk_always_on_top"):
+            self.chk_always_on_top.setChecked(bool(data["always_on_top"]))
+        if "interval_mins" in data and hasattr(self, "combo_interval"):
+            int_val = int(data["interval_mins"])
+            idx = self.combo_interval.findText(f"{int_val} min")
+            if idx >= 0:
+                self.combo_interval.setCurrentIndex(idx)
+            else:
+                self.combo_interval.setCurrentText("Custom")
+                if hasattr(self, "spin_interval_custom"):
+                    self.spin_interval_custom.setValue(int_val)
+        if "quiet_hours_enabled" in data and hasattr(self, "chk_quiet"):
+            self.chk_quiet.setChecked(bool(data["quiet_hours_enabled"]))
+        if "quiet_hours_start" in data and hasattr(self, "time_q_start"):
+            self.time_q_start.setTime(QTime.fromString(str(data["quiet_hours_start"]), "HH:mm"))
+        if "quiet_hours_end" in data and hasattr(self, "time_q_end"):
+            self.time_q_end.setTime(QTime.fromString(str(data["quiet_hours_end"]), "HH:mm"))
+        if "sound_effects_enabled" in data and hasattr(self, "chk_sound"):
+            self.chk_sound.setChecked(bool(data["sound_effects_enabled"]))
+        if "corner_position" in data and hasattr(self, "combo_corner"):
+            self.combo_corner.setCurrentText(str(data["corner_position"]))
+        if "click_through_enabled" in data and hasattr(self, "chk_click_through"):
+            self.chk_click_through.setChecked(bool(data["click_through_enabled"]))
+        if "animation_enabled" in data and hasattr(self, "chk_animation"):
+            self.chk_animation.setChecked(bool(data["animation_enabled"]))
+        if "performance_mode" in data and hasattr(self, "chk_perf_mode"):
+            self.chk_perf_mode.setChecked(bool(data["performance_mode"]))
+
+        self.save_and_apply()
+
+    def toggle_view_mode(self):
+        """Toggle between Neo-Brutalist Pop-Art Graphic View and Native Aquatic View."""
+        if hasattr(self, "web_view") and hasattr(self, "_native_container"):
+            is_web = self.web_view.isVisible()
+            self.web_view.setVisible(not is_web)
+            self._native_container.setVisible(is_web)

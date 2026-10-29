@@ -162,3 +162,45 @@ def test_consecutive_days_increment_and_missed_day_reset():
         assert ev5 == StreakEvent.GOAL_REACHED_FIRST_TIME
         assert cm.settings.streak_current == 1
         assert cm.settings.streak_longest == 3
+
+
+def test_reset_to_defaults_propagates_to_running_engine_and_streak():
+    """Verifies that reset_to_defaults immediately updates running ReminderEngine and StreakTracker."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config_path = Path(tmpdir) / "settings.json"
+        cm = ConfigManager(custom_path=config_path)
+        cm.settings.reminder_interval_minutes = 99
+        cm.settings.daily_hydration_goal_ml = 5000
+        cm.save()
+
+        engine = ReminderEngine(cm)
+        assert engine.settings.reminder_interval_minutes == 99
+        assert engine.streak_tracker.settings.daily_hydration_goal_ml == 5000
+
+        # Reset to defaults
+        cm.reset_to_defaults()
+        assert cm.settings.reminder_interval_minutes == 45
+        assert cm.settings.daily_hydration_goal_ml == 2000
+
+        # Live engine and streak tracker must immediately see new values
+        assert engine.settings.reminder_interval_minutes == 45
+        assert engine.streak_tracker.settings.daily_hydration_goal_ml == 2000
+
+
+def test_dismiss_companion_guarantees_idle_and_reschedules():
+    """Verifies that dismissing the companion window always clears waiting states and reschedules."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config_path = Path(tmpdir) / "settings.json"
+        cm = ConfigManager(custom_path=config_path)
+        cm.settings.reminder_interval_minutes = 45
+        cm.save()
+
+        from src.reminder_engine import ReminderState
+        engine = ReminderEngine(cm)
+        engine._set_state(ReminderState.WAITING_FOR_RESPONSE)
+        engine._target_time = None
+
+        engine.on_user_dismissed()
+        assert engine.state == ReminderState.IDLE
+        assert engine._target_time is not None
+        assert engine.get_seconds_remaining() > 0

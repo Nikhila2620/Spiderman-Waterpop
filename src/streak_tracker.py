@@ -64,13 +64,18 @@ class StreakTracker:
 
     def __init__(self, config_manager: ConfigManager, current_date: Optional[date] = None):
         self.config_manager = config_manager
-        self.settings = config_manager.settings
         self._lock = threading.Lock()
 
         # Run startup rollover validation if date provided
         if current_date is not None:
             with self._lock:
                 self._check_rollover_internal(current_date)
+
+    @property
+    def settings(self):
+        """Dynamic reference so reset_to_defaults and restore_backup always reflect live settings."""
+        return self.config_manager.settings
+
 
     def get_cooldown_remaining(
         self,

@@ -43,7 +43,6 @@ class ReminderEngine(QObject):
     def __init__(self, config_manager: ConfigManager, parent=None):
         super().__init__(parent)
         self.config_manager = config_manager
-        self.settings = config_manager.settings
         self.streak_tracker = StreakTracker(self.config_manager)
 
         self.state = ReminderState.IDLE
@@ -57,6 +56,12 @@ class ReminderEngine(QObject):
         self._check_daily_date_reset()
         self.reset_schedule()
         self._heartbeat.start()
+
+    @property
+    def settings(self) -> AppSettings:
+        """Dynamic reference so reset_to_defaults and restore_backup always reflect live settings."""
+        return self.config_manager.settings
+
 
     def _check_daily_date_reset(self) -> None:
         """Resets today's stats and updates streak continuity if calendar date changed."""
@@ -270,7 +275,7 @@ class ReminderEngine(QObject):
 
     def on_user_dismissed(self) -> None:
         """User closed popup or reminder auto-closed without response (MED-05)."""
-        if self.state in (ReminderState.WAITING_FOR_RESPONSE, ReminderState.RETRY_SCHEDULED):
+        if self.state in (ReminderState.WAITING_FOR_RESPONSE, ReminderState.RETRY_SCHEDULED, ReminderState.REMINDER_DUE):
             # User dismissed the reminder. Respect user focus and prevent the irritating 5-minute nag loop
             # by scheduling the next reminder for the full configured reminder interval.
             mins = max(1, min(720, self.settings.reminder_interval_minutes))
@@ -278,6 +283,9 @@ class ReminderEngine(QObject):
             self._target_time = now + timedelta(minutes=mins)
             self._set_state(ReminderState.IDLE)
             logger.info(f"Reminder dismissed. Next reminder scheduled in {mins}m.")
+        elif self._target_time is None and self.state != ReminderState.PAUSED:
+            # Fail-safe: ensure engine is never stuck with empty target time
+            self.reset_schedule()
 
     def pause_reminders(self, pause: bool = True) -> None:
         self.settings.reminders_paused = pause

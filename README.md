@@ -39,7 +39,7 @@
 Instead of annoying, generic popups or web notifications, Spider-Man hangs upside down from the corner of your screen by an authentic silk web strand. He periodically checks in with you, swings dynamically across your monitor when you drink water, and tracks your daily hydration goals and streaks in an interactive dashboard.
 
 ### Key Highlights
-* **Native Desktop Engine:** Powered by PySide6 C++ Qt (~45 MB memory idle companion; ~120 MB when Chromium-based WebEngine dashboard is open).
+* **Desktop Performance:** Powered by PySide6 Qt (~45–55 MB memory in idle companion mode; ~130–150 MB when Chromium WebEngine dashboard is open).
 * **Hardware Click-Through:** Clicks pass straight through to background games and apps (`WS_EX_TRANSPARENT`).
 * **Global Hotkey:** Press `Ctrl + Alt + W` anytime system-wide to toggle companion interactivity.
 * **Dual Interface:** Interactive Neo-Brutalist Pop-Art Graphic Dashboard (`QWebEngineView`) with synchronized native Qt widgets as fallback.

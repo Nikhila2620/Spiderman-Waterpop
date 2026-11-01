@@ -8,17 +8,16 @@ echo   Installing Spider-Man Waterpop Desktop & Start Menu
 echo ============================================================
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\create_shortcuts.ps1"
-if %ERRORLEVEL% neq 0 (
-    echo.
-    echo [ERROR] Shortcut installation encountered an issue.
-    pause
-    exit /b 1
+if exist "%~dp0.venv\Scripts\python.exe" (
+    "%~dp0.venv\Scripts\python.exe" "%~dp0scripts\install_and_register_app.py"
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\create_shortcuts.ps1"
 )
 
 echo.
 echo ============================================================
-echo   Installation Complete! Look for Spider-Man on your Desktop!
+echo   Installation Complete! Look for Spider-Man on your Desktop
+echo   and in your Windows Start Menu under "Spider-Man Waterpop"!
 echo ============================================================
-timeout /t 3 >nul
+ping 127.0.0.1 -n 3 >nul
 exit /b 0

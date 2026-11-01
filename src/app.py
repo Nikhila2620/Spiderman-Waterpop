@@ -210,15 +210,15 @@ class SpiderManWaterBuddyApp(QObject):
             self.act_manual_drink.setText("💧 YES, I DRANK (+250 ml)")
             self.act_manual_drink.setEnabled(True)
 
-    def run(self, start_minimized_override: bool = False, show_dashboard: bool = False):
+    def run(self, start_minimized_override: bool = False, show_dashboard: bool = True):
         if not self.settings.first_run_completed:
             wizard = SetupWizardDialog(self.config_manager)
             wizard.wizardCompleted.connect(self._on_wizard_completed)
             wizard.exec()
         else:
             self._start_main_workflow(
-                minimized=start_minimized_override or self.settings.start_minimized,
-                show_dashboard=show_dashboard,
+                minimized=start_minimized_override,
+                show_dashboard=show_dashboard and not start_minimized_override,
             )
 
     def _on_wizard_completed(self, new_settings):
@@ -226,7 +226,12 @@ class SpiderManWaterBuddyApp(QObject):
         self.dashboard.load_values_from_settings()
         self._start_main_workflow(minimized=self.settings.start_minimized, show_dashboard=True)
 
-    def _start_main_workflow(self, minimized: bool = False, show_dashboard: bool = False):
+    def _start_main_workflow(self, minimized: bool = False, show_dashboard: bool = True):
+        # 1. Main app dashboard launches first
+        if show_dashboard and not minimized:
+            self.show_dashboard()
+
+        # 2. Then companion is perched in corner
         if minimized:
             self.companion.hide()
             self.act_toggle_comp.setText("👁️ Show Companion")
@@ -236,9 +241,6 @@ class SpiderManWaterBuddyApp(QObject):
         else:
             self.companion.hide()
             self.act_toggle_comp.setText("👁️ Show Companion")
-
-        if show_dashboard:
-            self.show_dashboard()
 
     def show_companion(self):
         self.settings.companion_visible = True

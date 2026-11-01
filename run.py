@@ -180,15 +180,13 @@ def main():
 
     controller = SpiderManWaterBuddyApp(app)
 
-    # Transient runtime flags: standard launch shows perched companion; dashboard opens on click or --dashboard
+    # Standard launch: Main App dashboard launches first, Spider-Man companion perches in corner
     minimized_override = False
-    show_dashboard_flag = False
+    show_dashboard_flag = True
     if "--minimized" in sys.argv:
         logger.info("Launched with --minimized flag (Windows Startup).")
         minimized_override = True
         show_dashboard_flag = False
-    if "--dashboard" in sys.argv:
-        show_dashboard_flag = True
 
     controller.run(start_minimized_override=minimized_override, show_dashboard=show_dashboard_flag)
     sys.exit(app.exec())

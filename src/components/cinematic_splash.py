@@ -1,3 +1,4 @@
+from src.utils import resource_path
 """
 Cinematic Opening Shoot & Splash Animation Overlay for Spider-Man Water Buddy v2.0.
 Executes a high-impact superhero movie title pop sequence:
@@ -29,7 +30,7 @@ class CinematicSplashOverlay(QWidget):
         self._opacity = 1.0
 
         # Load Logo Pixmap
-        icon_path = Path(__file__).resolve().parent.parent.parent / "assets" / "images" / "app_icon.png"
+        icon_path = resource_path("assets/images/app_icon.png")
         self._logo_pixmap = QPixmap(str(icon_path)) if icon_path.exists() else QPixmap()
 
         self._anim = QPropertyAnimation(self, b"animProgress")

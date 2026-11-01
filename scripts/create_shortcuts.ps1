@@ -1,5 +1,6 @@
-# Create Desktop and Start Menu Shortcuts for Spider-Man Water Buddy v2.0
-$ErrorActionPreference = "Stop"
+# Create Desktop and Start Menu Shortcuts for Spider-Man Waterpop v2.0
+# Shortcuts always target START_APP.bat so a copied .venv cannot silently fail.
+$ErrorActionPreference = "SilentlyContinue"
 
 $ProjectDir = Split-Path -Parent $PSScriptRoot
 $DesktopDir = [Environment]::GetFolderPath("Desktop")
@@ -7,35 +8,24 @@ $StartMenuDir = [System.IO.Path]::Combine([Environment]::GetFolderPath("StartMen
 
 $IconPath = Join-Path $ProjectDir "assets\images\app_icon.ico"
 $BatPath = Join-Path $ProjectDir "START_APP.bat"
-$VenvPython = Join-Path $ProjectDir ".venv\Scripts\pythonw.exe"
-$RunScript = Join-Path $ProjectDir "run.py"
 
-# Choose target: pythonw run.py directly if venv exists, else START_APP.bat
 $WshShell = New-Object -ComObject WScript.Shell
 
-function Make-Shortcut($lnkPath) {
+function Make-Shortcut($lnkPath, $desc) {
     $Shortcut = $WshShell.CreateShortcut($lnkPath)
-    if (Test-Path $VenvPython) {
-        $Shortcut.TargetPath = $VenvPython
-        $Shortcut.Arguments = "`"$RunScript`""
-    } else {
-        $Shortcut.TargetPath = $BatPath
-    }
+    $Shortcut.TargetPath = $BatPath
+    $Shortcut.Arguments = ""
     $Shortcut.WorkingDirectory = $ProjectDir
     if (Test-Path $IconPath) {
         $Shortcut.IconLocation = "$IconPath, 0"
     }
-    $Shortcut.Description = "Spider-Man Water Buddy v2.0 - Desktop Hydration Companion"
+    $Shortcut.Description = $desc
     $Shortcut.Save()
     Write-Host "[OK] Created shortcut: $lnkPath"
 }
 
-# 1. Desktop Shortcut
-$DesktopLnk = Join-Path $DesktopDir "Spider-Man Water Buddy.lnk"
-Make-Shortcut $DesktopLnk
+Make-Shortcut (Join-Path $DesktopDir "Spider-Man Waterpop.lnk") "Spider-Man Waterpop v2.0"
+Make-Shortcut (Join-Path $StartMenuDir "Spider-Man Waterpop.lnk") "Spider-Man Waterpop v2.0"
+Make-Shortcut (Join-Path $StartMenuDir "Spider-Man Water Buddy.lnk") "Spider-Man Water Buddy v2.0"
 
-# 2. Start Menu Shortcut
-$StartMenuLnk = Join-Path $StartMenuDir "Spider-Man Water Buddy.lnk"
-Make-Shortcut $StartMenuLnk
-
-Write-Host "`nAll shortcuts successfully configured!"
+Write-Host "`nAll shortcuts successfully configured in Windows Start Menu and Desktop!"

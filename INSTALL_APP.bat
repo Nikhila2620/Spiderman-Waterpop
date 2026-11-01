@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 title Spider-Man Waterpop Setup
 cd /d "%~dp0"
 
@@ -8,28 +8,20 @@ echo   Installing Spider-Man Waterpop v2.0
 echo ============================================================
 echo.
 
-set "SETUP_EXE=%~dp0dist\SpiderManWaterBuddy-v2.0.0-Setup.exe"
+:: Source copies have no compiled Setup.exe payload. Prepare a local
+:: venv, install shortcuts, then start the app — no terminal required.
+call "%~dp0START_APP.bat"
+if !errorlevel! neq 0 exit /b 1
 
-if exist "%SETUP_EXE%" (
-    echo [INFO] Launching standalone installer...
-    start "" "%SETUP_EXE%"
-    exit /b 0
-)
-
-:: If standalone installer is not built, install desktop and start menu shortcuts
-echo [INFO] Installing Desktop and Start Menu shortcuts...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\create_shortcuts.ps1"
-if %ERRORLEVEL% neq 0 (
-    echo.
-    echo [ERROR] Shortcut installation failed.
-    pause
-    exit /b 1
+if exist "%~dp0.venv\Scripts\python.exe" (
+    "%~dp0.venv\Scripts\python.exe" "%~dp0scripts\register_windows_app.py"
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\create_shortcuts.ps1"
 )
 
 echo.
-echo ============================================================
-echo   Installation Complete!
-echo   Double-click START_APP.bat or use the desktop shortcut.
-echo ============================================================
-timeout /t 3 >nul
+echo Shortcuts are on your Desktop and Start Menu.
+echo You can open the app later by double-clicking those — no command needed.
+echo.
+pause
 exit /b 0

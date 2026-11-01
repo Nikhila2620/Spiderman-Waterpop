@@ -1,3 +1,4 @@
+from src.utils import resource_path
 """
 Settings & Hydration Dashboard Window for Spider-Man Water Buddy.
 Implements a premium Aquatic Liquid Glass user interface with custom left navigation sidebar,
@@ -94,7 +95,9 @@ class DashboardWindow(QWidget):
         self.web_channel.registerObject("pybridge", self.web_bridge)
         self.web_view.page().setWebChannel(self.web_channel)
 
-        html_path = Path(__file__).resolve().parent / "web" / "dashboard.html"
+        html_path = resource_path("src/web/dashboard.html")
+        if not html_path.exists():
+            html_path = Path(__file__).resolve().parent / "web" / "dashboard.html"
         if html_path.exists():
             self.web_view.setUrl(QUrl.fromLocalFile(str(html_path)))
             self.web_view.loadFinished.connect(lambda ok: self._push_full_state_to_web())
@@ -123,7 +126,7 @@ class DashboardWindow(QWidget):
 
         # PP / App Icon Avatar Badge (Official Logo)
         lbl_pp = QLabel()
-        icon_path = Path(__file__).resolve().parent.parent / "assets" / "images" / "app_icon.png"
+        icon_path = resource_path("assets/images/app_icon.png")
         if icon_path.exists():
             lbl_pp.setPixmap(QPixmap(str(icon_path)).scaled(34, 34, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         else:

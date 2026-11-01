@@ -333,7 +333,8 @@ class CompanionWindow(QWidget):
 
             style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
             style |= (WS_EX_LAYERED | WS_EX_NOACTIVATE)
-            if enable and not self._in_reminder_mode:
+            # Never enable click-through if card is visible, or in reminder mode
+            if enable and not self._in_reminder_mode and not self.card.isVisible():
                 ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT)
                 logger.info("Click-through ENABLED")
             else:
@@ -354,6 +355,9 @@ class CompanionWindow(QWidget):
 
     def _on_spidey_clicked(self):
         if not self._in_reminder_mode:
+            self.card.setVisible(True)
+            self.apply_click_through(False)
+            self.adjustSize()
             self.openDashboardRequested.emit()
         elif self.spidey._base_state == SpideyWidget.STATE_IDLE and self.action_widget.isVisible():
             self.dialogue_label.setText("Thwip! Keep your hydration superpower active! 💧")
@@ -382,8 +386,10 @@ class CompanionWindow(QWidget):
     def trigger_reminder_mode(self):
         """Enters active reminder interaction mode without stealing keyboard focus."""
         self._in_reminder_mode = True
+        self.card.setVisible(True)
         self.apply_click_through(False)
         self.reset_card_ui()
+        self.adjustSize()
         self.show()
 
         if sys.platform == "win32":
@@ -504,6 +510,7 @@ class CompanionWindow(QWidget):
         """Programmatically dismisses the companion window and cancels auto-close timer (MED-05)."""
         self._auto_close_timer.stop()
         self._in_reminder_mode = False
+        self.card.setVisible(False)
         self.apply_click_through(self.settings.click_through_enabled)
         self.reset_card_ui()
         self.dismissed.emit()

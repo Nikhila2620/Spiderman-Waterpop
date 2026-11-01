@@ -9,6 +9,10 @@ import shutil
 import winreg
 from pathlib import Path
 
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,

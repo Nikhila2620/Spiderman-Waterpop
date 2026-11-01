@@ -24,6 +24,7 @@ from PySide6.QtGui import (
     QRadialGradient,
 )
 from PySide6.QtSvg import QSvgRenderer
+from src.utils import resource_path
 
 
 class SpideyWidget(QWidget):
@@ -162,7 +163,7 @@ class SpideyWidget(QWidget):
 
     def _init_assets(self):
         """Loads the AAA 3D photorealistic render and vector overlays."""
-        base_dir = Path(__file__).resolve().parent.parent / "assets" / "images"
+        base_dir = resource_path("assets/images")
         png_path = base_dir / "spidey_3d_render.png"
 
         if png_path.exists():
@@ -970,6 +971,16 @@ class SpideyWidget(QWidget):
         ]
         painter.drawPolygon(points)
         painter.restore()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        if hasattr(self, '_idle_group') and self._idle_group.state() == QPropertyAnimation.State.Running:
+            self._idle_group.pause()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if hasattr(self, '_idle_group') and self._idle_group.state() == QPropertyAnimation.State.Paused:
+            self._idle_group.resume()
 
 
 # Compatibility alias

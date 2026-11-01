@@ -113,11 +113,19 @@ class NamedMutexGuard:
 
     def acquire(self) -> bool:
         try:
-            kernel32 = ctypes.windll.kernel32
-            self.handle = kernel32.CreateMutexW(None, True, self.mutex_name)
-            last_err = kernel32.GetLastError()
+            # use_last_error=True is required; ctypes.windll.GetLastError() is often stale
+            # and can make a fresh launch think another instance is already running.
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            CreateMutexW = kernel32.CreateMutexW
+            CreateMutexW.restype = ctypes.c_void_p
+            CreateMutexW.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
+            self.handle = CreateMutexW(None, True, self.mutex_name)
+            last_err = ctypes.get_last_error()
             if last_err == ERROR_ALREADY_EXISTS:
                 self.already_running = True
+                if self.handle:
+                    kernel32.CloseHandle(self.handle)
+                    self.handle = None
                 return False
             self.already_running = False
             return True

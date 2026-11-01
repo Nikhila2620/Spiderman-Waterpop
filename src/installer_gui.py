@@ -12,6 +12,11 @@ import winreg
 from pathlib import Path
 import time
 
+# Allow `pythonw src/installer_gui.py` (sys.path would otherwise be src/, so `import src` fails).
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QApplication,
@@ -60,30 +65,67 @@ def get_windows_special_folder(folder_name: str) -> Path:
 
 
 def create_windows_shortcut(target_exe: Path, shortcut_path: Path, icon_path: Path):
-    """Creates a Windows .lnk shortcut safely via PowerShell WScript.Shell with properly escaped paths."""
+    """Creates a Windows .lnk shortcut safely via PowerShell WScript.Shell or native VBScript fallback."""
     shortcut_path.parent.mkdir(parents=True, exist_ok=True)
-    target = str(target_exe.resolve()).replace("'", "''")
-    lnk = str(shortcut_path.resolve()).replace("'", "''")
-    icon = str(icon_path.resolve()).replace("'", "''")
-    workdir = str(target_exe.parent.resolve()).replace("'", "''")
+    target = str(target_exe.resolve())
+    lnk = str(shortcut_path.resolve())
+    icon = str(icon_path.resolve())
+    workdir = str(target_exe.parent.resolve())
 
-    ps_cmd = (
-        f"$s = (New-Object -ComObject WScript.Shell).CreateShortcut('{lnk}'); "
-        f"$s.TargetPath = '{target}'; "
-        f"$s.IconLocation = '{icon}, 0'; "
-        f"$s.WorkingDirectory = '{workdir}'; "
-        f"$s.Save();"
-    )
-    subprocess.run(
-        [
-            "powershell",
-            "-NoProfile",
-            "-ExecutionPolicy", "Bypass",
-            "-Command", ps_cmd,
-        ],
-        check=True,
-        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
-    )
+    # 1. Primary: PowerShell WScript.Shell
+    try:
+        esc_lnk = lnk.replace("'", "''")
+        esc_target = target.replace("'", "''")
+        esc_icon = icon.replace("'", "''")
+        esc_workdir = workdir.replace("'", "''")
+        ps_cmd = (
+            f"$s = (New-Object -ComObject WScript.Shell).CreateShortcut('{esc_lnk}'); "
+            f"$s.TargetPath = '{esc_target}'; "
+            f"$s.IconLocation = '{esc_icon}, 0'; "
+            f"$s.WorkingDirectory = '{esc_workdir}'; "
+            f"$s.Save();"
+        )
+        res = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-Command", ps_cmd,
+            ],
+            capture_output=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        if res.returncode == 0 and shortcut_path.exists():
+            return
+    except Exception:
+        pass
+
+    # 2. Resilient Fallback: Windows cscript VBScript (works on all Windows systems, bypasses PowerShell)
+    try:
+        import tempfile
+        q_lnk = lnk.replace('"', '""')
+        q_target = target.replace('"', '""')
+        q_icon = icon.replace('"', '""')
+        q_workdir = workdir.replace('"', '""')
+        vbs_lines = [
+            'Set WshShell = CreateObject("WScript.Shell")',
+            f'Set Shortcut = WshShell.CreateShortcut("{q_lnk}")',
+            f'Shortcut.TargetPath = "{q_target}"',
+            f'Shortcut.IconLocation = "{q_icon}, 0"',
+            f'Shortcut.WorkingDirectory = "{q_workdir}"',
+            'Shortcut.Save',
+        ]
+        vbs_content = "\r\n".join(vbs_lines)
+        with tempfile.NamedTemporaryFile("w", suffix=".vbs", delete=False) as f:
+            f.write(vbs_content)
+            temp_vbs = f.name
+        subprocess.run(["cscript.exe", "//nologo", temp_vbs], capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+        try:
+            os.remove(temp_vbs)
+        except Exception:
+            pass
+    except Exception:
+        pass
 
 
 class InstallWorker(QThread):
